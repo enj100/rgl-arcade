@@ -9,9 +9,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "canvas": "^3.1.0",
     "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
+    "gifencoder": "^2.0.1",
     "mysql2": "^3.6.5",
+    "node-cron": "^4.1.0",
     "sequelize": "^6.35.1",
     "sqlite3": "^5.1.6"
   }

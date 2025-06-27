@@ -1,72 +1,84 @@
-const {
-    ActionRowBuilder,
-    ButtonBuilder,
-    Events,
-    EmbedBuilder,
-    ButtonStyle
-} = require("discord.js");
-const { selectMenu } = require("./selectMenu");
-const { logChannel, color, thumnail, serverName } = require("./buttons");
-const { logChannelModal } = require("./modals/logChannelModal");
-const Settings = require("../../models/settings");
+const { Events, ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle } = require("discord.js");
+const Settings = require("./models/settings");
+const buildSettingsEmbed = require("./embeds/settings");
 
 module.exports = {
-    name: Events.InteractionCreate,
-    async execute(interaction) {
-        if (interaction.isChatInputCommand()) return;
-        /* 
-            ---------- Settings SelectMenu
-        */
-        if (interaction.customId.includes("settings-selectMenu")) {
-            const settings = await Settings.findOne({ where: { id: 0 } });
-            const logChannelId = (settings && settings.log_channel.length > 0 ? settings.log_channel : null);
+	name: Events.InteractionCreate,
+	async execute(interaction) {
+		if (interaction.isChatInputCommand()) return;
+		else if (interaction?.customId === "settings_logs_channel_select") {
+			const selectedChannelId = interaction.values[0];
 
-            const embed = new EmbedBuilder()
-                .setTitle("Server Settings")
-                .setDescription(`Log Channel: ${logChannelId ? "<#" + logChannelId + ">" : "-"}`);
+			const settings = await Settings.findOne({
+				where: { id: 0 },
+			});
+			settings.logs_channel = selectedChannelId;
+			await settings.save();
+			interaction.client.serverSettings = settings;
 
-            const select = selectMenu();
+			interaction.client.logsChannel = await interaction.client.channels.fetch(selectedChannelId).catch(() => null);
 
-            const selectMenuRow = new ActionRowBuilder()
-                .addComponents(select);
+			const { embeds, components } = await buildSettingsEmbed(interaction);
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true, // Make the reply visible only to the user who invoked the command
+			});
+		} else if (interaction?.customId === "server_settings_button") {
+			const settings = interaction.client.serverSettings;
 
-            const buttons = new ActionRowBuilder()
-                .addComponents(logChannel, color, thumnail, serverName);
+			const modal = new ModalBuilder().setCustomId("settings_edit_submit").setTitle("Edit Server Settings");
 
-            await interaction.update({ embeds: [embed], components: [selectMenuRow, buttons] });
-        }
-        /* 
-            ---------- Server Settings Buttons
-            button-settings-logChannel
-        */
-        else if (interaction.customId.includes("button-settings")) {
-            if (interaction.customId.includes("logChannel")) {
-                const modal = logChannelModal();
-                await interaction.showModal(modal);
-            }
-        }
-        else if (interaction.isModalSubmit()) {
-            if (interaction.customId === "modal-settings-logChannel") {
-                const settings = await Settings.findOne({ where: { id: 0 } });
-                const logChannel = interaction.fields.getTextInputValue('logChannelId');
+			const thumbnailInput = new TextInputBuilder()
+				.setCustomId("settings_thumbnail")
+				.setLabel("Thumbnail URL")
+				.setStyle(TextInputStyle.Short)
+				.setPlaceholder("https://example.com/image.png")
+				.setRequired(false)
+				.setValue(settings?.thumbnail || "");
 
-                const channel = interaction.client.channels.cache.get(logChannel);
+			const colorInput = new TextInputBuilder()
+				.setCustomId("settings_color")
+				.setLabel("Embed Color (hex, e.g. #00AE86)")
+				.setStyle(TextInputStyle.Short)
+				.setPlaceholder("#00AE86")
+				.setRequired(false)
+				.setValue(settings?.color || "");
 
-                if (!channel) {
-                    await interaction.reply({ content: "❗Channel do not exist!", ephemeral: true });
-                    return;
-                }
+			const brandNameInput = new TextInputBuilder()
+				.setCustomId("settings_brand_name")
+				.setLabel("Brand Name")
+				.setStyle(TextInputStyle.Short)
+				.setPlaceholder("Arcade Brand")
+				.setRequired(false)
+				.setValue(settings?.brand_name || "");
 
-                const embed = new EmbedBuilder()
-                    .setTitle("Server Settings")
-                    .setDescription(`Log Channel: <#${logChannel}>`);
+			modal.addComponents(
+				new ActionRowBuilder().addComponents(thumbnailInput),
+				new ActionRowBuilder().addComponents(colorInput),
+				new ActionRowBuilder().addComponents(brandNameInput)
+			);
+			await interaction.showModal(modal);
+		} else if (interaction?.customId === "settings_edit_submit") {
+			const settings = interaction.client.serverSettings;
 
+			const thumbnail = interaction.fields.getTextInputValue("settings_thumbnail");
+			const color = interaction.fields.getTextInputValue("settings_color");
+			const brandName = interaction.fields.getTextInputValue("settings_brand_name");
 
-                await interaction.update({ embeds: [embed] });
+			settings.thumbnail = thumbnail || null;
+			settings.color = color || "FFFFFF";
+			settings.brand_name = brandName || null;
 
-                settings.log_channel = logChannel;
-                await settings.save();
-            }
-        }
-    },
+			await settings.save();
+			interaction.client.serverSettings = settings;
+
+			const { embeds, components } = await buildSettingsEmbed(interaction);
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true, // Make the reply visible only to the user who invoked the command
+			});
+		}
+	},
 };

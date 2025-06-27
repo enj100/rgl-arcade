@@ -1,1 +1,4 @@
 /node_modules
+/commands/whip/assets/left
+/commands/whip/assets/right
+.env
