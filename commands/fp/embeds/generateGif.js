@@ -152,10 +152,10 @@ module.exports = {
 				encoder.addFrame(ctx);
 
 				ctx.font = "25px Arial";
-				ctx.fillStyle = "#53C1BD";
+				ctx.fillStyle = "#ffffff";
 				ctx.textBaseline = "middle";
 				ctx.fillText(user1.tag, 75, 70);
-				ctx.fillStyle = "#DD5ED4";
+				ctx.fillStyle = "#ff0000";
 				ctx.fillText(user2.tag, 75, 177);
 
 				if (winner > 0) {
@@ -182,7 +182,7 @@ module.exports = {
 				encoder.addFrame(ctx);
 
 				ctx.font = "25px Arial";
-				ctx.fillStyle = `${winner.winner === 0 ? "#FF0000" : winner.winner === 1 ? "#53C1BD" : "#DD5ED4"}`;
+				ctx.fillStyle = `${winner.winner === 0 ? "#FFFF00" : winner.winner === 1 ? "#ffffff" : "#ff0000"}`;
 				ctx.textBaseline = "left";
 
 				ctx.fillText(`${winnerText === "Tie" ? "TIE" : `${winnerText}(${winner.hand})`}`, 170, 295);
