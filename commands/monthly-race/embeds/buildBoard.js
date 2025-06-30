@@ -15,7 +15,7 @@ async function generateLeaderboardImages(users = null, client) {
 	for (let page = 0; page < 2; page++) {
 		const canvas = createCanvas(960, 540);
 		const context = canvas.getContext("2d");
-		const background = await loadImage(path.join(__dirname, "../assets/race.png"));
+		const background = await loadImage(path.join(__dirname, "../assets/race.jpg"));
 		context.drawImage(background, 0, 0, canvas.width, canvas.height);
 
 		context.font = "bold 25px verdana";
@@ -29,14 +29,14 @@ async function generateLeaderboardImages(users = null, client) {
 		for (let index = 0; index < 10; index++) {
 			const displayIndex = startIndex + index + 1;
 			const displayIndexText = `${displayIndex < 10 ? "0" : ""}${displayIndex}`;
-			context.fillText(displayIndexText, 65, y);
+			context.fillText(displayIndexText, 55, y);
 
 			const user = users[startIndex + index];
 			if (user) {
 				const userObj = await client.users.fetch(user?.discord_id);
 				if (userObj) {
-					context.fillText(userObj.username, 470, y);
-					context.fillText(`${user.total.toFixed(2)}`, 850, y);
+					context.fillText(userObj.username, 435, y);
+					context.fillText(`${user.total.toFixed(2)}`, 840, y);
 				}
 			}
 
