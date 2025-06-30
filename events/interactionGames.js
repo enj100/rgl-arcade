@@ -6,16 +6,271 @@ const {
 	ButtonStyle,
 	EmbedBuilder,
 	AttachmentBuilder,
+	ModalBuilder,
+	TextInputBuilder,
+	TextInputStyle,
 } = require("discord.js");
 const User = require("../commands/wallet/models/User");
 const path = require("path");
 const fs = require("fs");
 const { processGameResult } = require("../utils/winners");
+const validate = require("validator");
+
+const buildFeedbackSettingsEmbed = require("../commands/feedback/feedbackSettingsEmbed");
+const Feedbacks = require("../commands/feedback/models/feedbacks");
 
 module.exports = {
 	name: Events.InteractionCreate,
 	async execute(interaction) {
 		if (interaction.isChatInputCommand()) return;
+		///////////////////////////////////////////////////
+		////////////////// FEEDBACKS //////////////////
+		///////////////////////////////////////////////////
+		else if (
+			interaction?.customId === "other_settings" &&
+			interaction?.values[0] &&
+			interaction?.values[0] === "feedback_settings"
+		) {
+			const { embed, components } = await buildFeedbackSettingsEmbed(interaction);
+			await interaction.reply({
+				embeds: [embed],
+				components: [...components],
+				ephemeral: true,
+			});
+		} else if (interaction?.customId === "feedback_settings_channel") {
+			const channelId = interaction.values[0];
+			const channel = await interaction.guild.channels.fetch(channelId);
+			if (!channel) {
+				return await interaction.reply({
+					content: "❗️ Invalid channel selected.",
+					ephemeral: true,
+				});
+			}
+
+			interaction.client.feedbackSettings.feedbacks_channel = channelId;
+
+			await interaction.client.feedbackSettings.save();
+
+			const { embed, components } = await buildFeedbackSettingsEmbed(interaction);
+
+			await interaction.update({
+				embeds: [embed],
+				components: [...components],
+			});
+
+			await interaction.followUp({
+				content: `✅ Feedback channel updated to ${channel}.`,
+				ephemeral: true,
+			});
+		} else if (interaction?.customId === "feedback_settings_edit") {
+			const settings = interaction.client.feedbackSettings;
+			const modal = new ModalBuilder().setCustomId("feedback_settings_edit_submit").setTitle("Edit Feedback Settings");
+
+			const colorInput = new TextInputBuilder()
+				.setCustomId("color_input")
+				.setLabel("Enter the color for the embed (hex code):")
+				.setStyle(TextInputStyle.Short)
+				.setValue(settings.color || "000000")
+				.setRequired(true)
+				.setMinLength(6)
+				.setMaxLength(6)
+				.setPlaceholder("000000");
+
+			const thumbnailInput = new TextInputBuilder()
+				.setCustomId("thumbnail_input")
+				.setLabel("Enter the thumbnail URL:")
+				.setStyle(TextInputStyle.Short)
+				.setValue(settings.thumbnail || "")
+				.setRequired(false)
+				.setMaxLength(2000)
+				.setPlaceholder("https://example.com/thumbnail.png");
+
+			const imageInput = new TextInputBuilder()
+				.setCustomId("image_input")
+				.setLabel("Enter the image URL:")
+				.setStyle(TextInputStyle.Short)
+				.setValue(settings.image || "")
+				.setMaxLength(2000)
+				.setRequired(false)
+				.setPlaceholder("https://example.com/image.png");
+
+			const descriptionInput = new TextInputBuilder()
+				.setCustomId("description_input")
+				.setLabel("Feedback Embed Description:")
+				.setStyle(TextInputStyle.Paragraph)
+				.setValue(settings.feedback_description || "")
+				.setRequired(false)
+				.setMaxLength(2000)
+				.setPlaceholder("Use buttons bellow to leave a feedback.");
+
+			const row1 = new ActionRowBuilder().addComponents(colorInput);
+			const row2 = new ActionRowBuilder().addComponents(thumbnailInput);
+			const row3 = new ActionRowBuilder().addComponents(imageInput);
+			const row4 = new ActionRowBuilder().addComponents(descriptionInput);
+
+			modal.addComponents(row1, row2, row3, row4);
+			await interaction.showModal(modal);
+		} else if (interaction?.customId === "feedback_settings_edit_submit") {
+			const color = interaction.fields.getTextInputValue("color_input");
+			const thumbnail = interaction.fields.getTextInputValue("thumbnail_input");
+			const image = interaction.fields.getTextInputValue("image_input");
+			const description = interaction.fields.getTextInputValue("description_input");
+
+			if (!validate.isHexColor(color)) {
+				return await interaction.reply({
+					content: "❗️ Invalid color format. Please enter a valid hex code.",
+					ephemeral: true,
+				});
+			}
+
+			if (thumbnail && thumbnail.length > 0 && !validate.isURL(thumbnail)) {
+				return await interaction.reply({
+					content: "❗️ Invalid thumbnail URL. Please enter a valid URL.",
+					ephemeral: true,
+				});
+			}
+
+			if (image && image.length > 0 && !validate.isURL(image)) {
+				return await interaction.reply({
+					content: "❗️ Invalid image URL. Please enter a valid URL.",
+					ephemeral: true,
+				});
+			}
+
+			interaction.client.feedbackSettings.color = color;
+			interaction.client.feedbackSettings.thumbnail = thumbnail;
+			interaction.client.feedbackSettings.image = image;
+			interaction.client.feedbackSettings.feedback_description = description;
+
+			await interaction.client.feedbackSettings.save();
+			const { embed, components } = await buildFeedbackSettingsEmbed(interaction);
+			await interaction.update({
+				embeds: [embed],
+				components: [...components],
+			});
+			await interaction.followUp({
+				content: "✅ Feedback settings updated successfully.",
+				ephemeral: true,
+			});
+		} else if (interaction?.customId?.startsWith("feedback_form_open-")) {
+			const rating = interaction.customId.split("-")[1];
+			const userId = interaction.customId.split("-")[2];
+			const issuedBy = interaction.customId.split("-")[3];
+
+			if (interaction.user.id !== userId) {
+				return await interaction.reply({
+					content: "❗️ You are not allowed to submit feedback!",
+					ephemeral: true,
+				});
+			}
+
+			// modal to add feedback
+			const modal = new ModalBuilder()
+				.setCustomId("feedback_form_submit-" + rating + "-" + userId + "-" + issuedBy)
+				.setTitle(`Feedback Form`);
+
+			const feedbackInput = new TextInputBuilder()
+				.setCustomId("feedback_input")
+				.setLabel(`Enter your feedback - (${rating}/5):`)
+				.setStyle(TextInputStyle.Paragraph)
+				.setRequired(true)
+				.setMaxLength(2000)
+				.setPlaceholder("Your feedback here...");
+			const row = new ActionRowBuilder().addComponents(feedbackInput);
+			modal.addComponents(row);
+			await interaction.showModal(modal);
+		} else if (interaction?.customId?.startsWith("feedback_form_submit-")) {
+			const rating = interaction.customId.split("-")[1];
+			const customer = interaction.customId.split("-")[2];
+			const issuedBy = interaction.customId.split("-")[3];
+			const feedback = interaction.fields.getTextInputValue("feedback_input");
+			const settings = interaction.client.feedbackSettings;
+			const serverSettings = interaction.client.serverSettings;
+
+			if (interaction.user.id !== customer) {
+				return await interaction.reply({
+					content: "❗️ You are not allowed to submit feedback!",
+					ephemeral: true,
+				});
+			}
+
+			if (!settings.feedbacks_channel) {
+				return await interaction.reply({
+					content: "❗️ Feedbacks channel is not set.",
+					ephemeral: true,
+				});
+			}
+
+			const channel = await interaction.client.channels.fetch(settings.feedbacks_channel);
+
+			if (!channel) {
+				return await interaction.reply({
+					content: "❗️ Feedbacks channel not found.",
+					ephemeral: true,
+				});
+			}
+
+			let stars = "";
+
+			for (let i = 0; i < rating; i++) {
+				stars += "⭐";
+			}
+
+			const customerText = `${process.env.FEEDBACK_CUSTOMER_EMOJI || "👥"} | \`Customer :\` <@${customer}>\n`;
+			const ratingText = `${process.env.FEEDBACK_RATING_EMOJI || "👍🏻"} | \`Rating   :\` ${stars} (${rating}/5)\n`;
+			const feedbackText = `${process.env.FEEDBACK_EMOJI || "💭"} | \`Feedback :\` ${feedback}\n`;
+
+			const embed = new EmbedBuilder()
+				.setTitle(`${process.env.FEEDBACK_TITLE_EMOJI || "⭐"} New Feedback`)
+				.setDescription(`Thank you for your feedback!\n\n${customerText}${ratingText}${feedbackText}`)
+				.setTimestamp();
+
+			if (settings.color) {
+				embed.setColor(settings.color);
+			}
+			if (settings.thumbnail && settings.thumbnail.length > 0) {
+				embed.setThumbnail(settings.thumbnail);
+			}
+			if (settings.image && settings.image.length > 0) {
+				embed.setImage(settings.image);
+			}
+
+			if (serverSettings.thumbnail && serverSettings.thumbnail.length > 0) {
+				if (serverSettings.brand_name && serverSettings.brand_name.length > 0) {
+					embed.setFooter({ text: serverSettings.brand_name, iconURL: serverSettings.thumbnail });
+				} else {
+					embed.setFooter({ text: "Feedbacks", iconURL: serverSettings.thumbnail });
+				}
+			} else {
+				embed.setFooter({ text: "Feedbacks" });
+			}
+
+			const thankyouButton = new ButtonBuilder()
+				.setCustomId("feedback_thankyou")
+				.setLabel("❤️ Thank You!")
+				.setStyle(ButtonStyle.Success)
+				.setDisabled(true);
+
+			await channel.send({ embeds: [embed] });
+
+			await Feedbacks.create({
+				customer: customer,
+				rating: rating,
+				feedback: feedback,
+				issued_by: issuedBy,
+			});
+
+			const row = new ActionRowBuilder().addComponents(thankyouButton);
+
+			await interaction.update({
+				components: [row],
+			});
+
+			await interaction.followUp({
+				content: `✅ Thank you for your feedback! You rated ${rating}/5.`,
+				ephemeral: true,
+			});
+		}
 		///////////////////////////////////////////////////
 		////////////////// DICE DUEL //////////////////
 		///////////////////////////////////////////////////

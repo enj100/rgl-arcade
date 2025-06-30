@@ -82,6 +82,16 @@ async function processGameResult({ player1, player2, winner, amount, player1Scor
 		`🥇 ${winner === "Tie" ? "It's a tie!" : `The winner is ${userMention(winner)}!`}\n` +
 		`__💵 Bet Amount: ${amount.toFixed(2)} RGL-Tokens__\n`;
 
+	if (winner !== "Tie") {
+		const messageForUsers = `🏆 ${userMention(winner)} won **${(amount * 2).toFixed(2)} RGL-Tokens** against ${userMention(
+			winner === player1 ? player2 : player1
+		)} in the **${gameName}**!\n`;
+		// delay 5 sec before sending the message to users
+		setTimeout(async () => {
+			await logToChannel(messageForUsers, interaction.client.gamesLogsChannel);
+		}, 15000);
+	}
+
 	await logToChannel(message, interaction.client.logsChannel);
 }
 

@@ -24,6 +24,24 @@ module.exports = {
 				components,
 				ephemeral: true, // Make the reply visible only to the user who invoked the command
 			});
+		} else if (interaction?.customId === "settings_games_logs_channel_select") {
+			const selectedChannelId = interaction.values[0];
+
+			const settings = await Settings.findOne({
+				where: { id: 0 },
+			});
+			settings.games_logs_channel = selectedChannelId;
+			await settings.save();
+			interaction.client.serverSettings = settings;
+
+			interaction.client.gamesLogsChannel = await interaction.client.channels.fetch(selectedChannelId).catch(() => null);
+
+			const { embeds, components } = await buildSettingsEmbed(interaction);
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true, // Make the reply visible only to the user who invoked the command
+			});
 		} else if (interaction?.customId === "server_settings_button") {
 			const settings = interaction.client.serverSettings;
 

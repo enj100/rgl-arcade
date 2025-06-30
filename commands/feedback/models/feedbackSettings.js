@@ -1,7 +1,7 @@
-const { DataTypes } = require("sequelize");
+const { DataTypes, Sequelize } = require("sequelize");
 const sequelize = require("../../../database/database");
 
-const Settings = sequelize.define("settings", {
+const FeedbackSettings = sequelize.define("feedback_settings", {
 	id: {
 		type: DataTypes.INTEGER,
 		allowNull: true,
@@ -9,7 +9,7 @@ const Settings = sequelize.define("settings", {
 		defaultValue: 0,
 	},
 	thumbnail: {
-		type: DataTypes.STRING,
+		type: DataTypes.STRING(1000),
 		allowNull: true,
 		defaultValue: null,
 	},
@@ -23,16 +23,21 @@ const Settings = sequelize.define("settings", {
 		allowNull: true,
 		defaultValue: null,
 	},
-	logs_channel: {
-		type: DataTypes.STRING(50),
+	feedbacks_channel: {
+		type: DataTypes.STRING(255),
 		allowNull: true,
 		defaultValue: null,
 	},
-	games_logs_channel: {
-		type: DataTypes.STRING(50),
+	image: {
+		type: DataTypes.STRING(1000),
+		allowNull: true,
+		defaultValue: null,
+	},
+	feedback_description: {
+		type: DataTypes.STRING(2000),
 		allowNull: true,
 		defaultValue: null,
 	},
 });
 
-module.exports = Settings;
+module.exports = FeedbackSettings;

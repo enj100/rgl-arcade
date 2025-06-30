@@ -100,7 +100,7 @@ module.exports = {
 				.setDescription(
 					`🎲 ${interaction.user} rolled a **${item.id + 1}**! 🎊 You won ⟫ *__${
 						item.item_name
-					}__* ⟪ (**${item.item_value.toFixed(2)} RGL-Coins**) 🎊`
+					}__* ⟪ (**${item.item_value.toFixed(2)} RGL-Tokens**) 🎊`
 				)
 				.setColor("FFFF00");
 

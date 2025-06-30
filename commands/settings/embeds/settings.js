@@ -15,11 +15,14 @@ async function buildSettingsEmbed(interaction) {
 
 	const brandName = `▸ **Brand Name:** ${settings.brand_name || "Not Set."}\n`;
 	const logsChannel = `▸ **Logs Channel:** ${settings.logs_channel ? channelMention(settings.logs_channel) : "Not Set."}\n`;
+	const gamesLogsChannel = `▸ **Games Logs Channel:** ${
+		settings.games_logs_channel ? channelMention(settings.games_logs_channel) : "Not Set."
+	}\n`;
 
 	const embed = new EmbedBuilder()
 		.setTitle("Server Settings")
 		.setColor(settings.color)
-		.setDescription(`${brandName}${logsChannel}`);
+		.setDescription(`${brandName}${logsChannel}${gamesLogsChannel}`);
 
 	if (settings.thumbnail && settings.thumbnail.length > 0) {
 		embed.setThumbnail(settings.thumbnail);
@@ -42,6 +45,14 @@ async function buildSettingsEmbed(interaction) {
 			.setMaxValues(1)
 	);
 	const row3 = new ActionRowBuilder().addComponents(
+		new ChannelSelectMenuBuilder()
+			.setCustomId("settings_games_logs_channel_select")
+			.setPlaceholder("ℹ️ Change Games Logs Channel")
+			.setChannelTypes(ChannelType.GuildText) // 0 is for GUILD_TEXT channels
+			.setMinValues(1)
+			.setMaxValues(1)
+	);
+	const row4 = new ActionRowBuilder().addComponents(
 		new StringSelectMenuBuilder()
 			.setCustomId("other_settings")
 			.setPlaceholder("⚙️ More Settings")
@@ -50,12 +61,13 @@ async function buildSettingsEmbed(interaction) {
 				new StringSelectMenuOptionBuilder().setLabel("👛 Goodie Bag Settings").setValue("goodiebag_settings"),
 				new StringSelectMenuOptionBuilder().setLabel("🎟️ Community Raffle Settings").setValue("community_raffle_settings"),
 				new StringSelectMenuOptionBuilder().setLabel("🏁 Monthly Race Settings").setValue("monthly_race_settings"),
+				new StringSelectMenuOptionBuilder().setLabel("💬 Feedback Settings").setValue("feedback_settings"),
 			])
 	);
 
 	return {
 		embeds: [embed],
-		components: [row1, row2, row3],
+		components: [row1, row2, row3, row4],
 	};
 }
 

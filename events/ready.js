@@ -14,9 +14,12 @@ const { buildMonthlyLeaderboard } = require("../commands/monthly-race/embeds/bui
 const CommunityRafflePrizes = require("../commands/community-raffle/models/RafflePrizes");
 const CommunityRaffleSettings = require("../commands/community-raffle/models/RaffleSettings");
 const CommunityRaffleTickets = require("../commands/community-raffle/models/RaffleTickets");
+const FeedbackSettings = require("../commands/feedback/models/feedbackSettings");
+const Feedbacks = require("../commands/feedback/models/feedbacks");
 
 async function syncDatabaseModels() {
 	console.log("⏳ Syncing database models...");
+
 	await sequelize.sync({ alter: true });
 	console.log("✅ Database models synced successfully.");
 }
@@ -53,6 +56,10 @@ async function fetchInitialData(client) {
 	if (client.serverSettings.logs_channel) {
 		client.logsChannel = await client.channels.fetch(client.serverSettings.logs_channel).catch(() => null);
 	}
+	if (client.serverSettings.games_logs_channel) {
+		client.gamesLogsChannel = await client.channels.fetch(client.serverSettings.games_logs_channel).catch(() => null);
+	}
+
 	await MonthlyRaceSettings.findOrCreate({
 		where: { id: 0 },
 		defaults: {
@@ -84,6 +91,11 @@ async function fetchInitialData(client) {
 			});
 		}
 	}
+
+	[client.feedbackSettings] = await FeedbackSettings.findOrCreate({
+		where: { id: 0 },
+		defaults: { id: 0 },
+	});
 
 	console.log("✅ Initial data fetched successfully.");
 }

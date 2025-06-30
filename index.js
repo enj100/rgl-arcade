@@ -24,6 +24,7 @@ const index = (async function () {
 	client.goodiebagSettings = null;
 	client.goodiebagItems = null;
 	client.logsChannel = null;
+	client.gamesLogsChannel = null;
 	const foldersPath = path.join(__dirname, "commands");
 	const commandFolders = fs.readdirSync(foldersPath);
 
