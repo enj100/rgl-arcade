@@ -24,7 +24,7 @@ const CommunityRaffleSettings = sequelize.define("community_raffle_settings", {
 		defaultValue: null,
 	},
 	message: {
-		type: DataTypes.STRING,
+		type: DataTypes.STRING(4000),
 		allowNull: true,
 		defaultValue: null,
 	},

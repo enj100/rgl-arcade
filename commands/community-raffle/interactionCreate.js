@@ -161,7 +161,7 @@ module.exports = {
 				.setStyle(TextInputStyle.Paragraph)
 				.setPlaceholder("Enter the raffle message")
 				.setValue(`${settings.message || ""}`)
-				.setMaxLength(4000) // Set a maximum length for the message
+				.setMaxLength(2000) // Set a maximum length for the message
 				.setRequired(false);
 
 			const thumbnailInput = new TextInputBuilder()
@@ -195,7 +195,7 @@ module.exports = {
 				});
 			}
 
-			settings.message = message;
+			settings.message = message.length > 0 ? message : null;
 			settings.thumbnail = thumbnail;
 			await settings.save();
 
@@ -315,7 +315,9 @@ module.exports = {
 				const embed = new EmbedBuilder()
 					.setTitle(`🎊 Community Raffle 🎊`)
 					.setDescription(
-						`\n🎟️ **${settings.tickets_amount} TICKETS AVAILABLE! 🎟️**\n### 🎁 Prizes:\n${prizes}\n${settings.text || ""}`
+						`\n🎟️ **${settings.tickets_amount} TICKETS AVAILABLE! 🎟️**\n\n${settings.message || ""}\n### 🎁 Prizes:\n${prizes}\n${
+							settings.text || ""
+						}`
 					)
 					.setColor("ffffff")
 					.setFooter({ text: `🎉 Community Raffle!` });
