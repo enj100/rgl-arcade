@@ -53,6 +53,11 @@ const CommunityRaffleSettings = sequelize.define("community_raffle_settings", {
 		allowNull: true,
 		defaultValue: 0,
 	},
+	spam_channel: {
+		type: DataTypes.STRING(64),
+		allowNull: true,
+		defaultValue: null,
+	},
 });
 
 module.exports = CommunityRaffleSettings;

@@ -46,6 +46,7 @@ module.exports = {
 			});
 		}
 
+		const spamChannel = await interaction.client.channels.fetch(settings.spam_channel).catch(() => null);
 		const channel = await interaction.client.channels.fetch(settings.channel).catch(() => null);
 		if (!channel) {
 			return await interaction.reply({
@@ -64,13 +65,15 @@ module.exports = {
 				});
 			}
 
+			const ticketNumbers = [];
 			for (let index = 0; index < amount; index++) {
-				await CommunityRaffleTickets.create({ discord_id: user.id });
+				const ticket = await CommunityRaffleTickets.create({ discord_id: user.id });
+				ticketNumbers.push(ticket.ticket_number);
 			}
 
 			// Add tickets logic
 			const embed = new EmbedBuilder()
-				.setDescription(`:tickets: ${user} just bought **${amount} ticket(s)!**`)
+				.setDescription(`:tickets: ${user} just bought **${amount} ticket(s)!**\n▸ Ticket Numbers: ${ticketNumbers.join(", ")}`)
 				.setColor("ffffff")
 				.setFooter({ text: `${ticketsCount + amount}/${settings.tickets_amount} ticket(s)` });
 
@@ -94,26 +97,28 @@ module.exports = {
 				let winners = [];
 				for (let index = 0; index < settings.winners_amount; index++) {
 					const rnd = Math.floor(Math.random() * allTickets.length);
-					winners.push(allTickets[rnd].discord_id);
+					winners.push({ user: allTickets[rnd].discord_id, ticket_number: allTickets[rnd].ticket_number });
 					allTickets.splice(rnd, 1);
 				}
 
 				// Prepare winners info array with username and prize
 				let winnersInfo = [];
 				for (let index = 0; index < winners.length; index++) {
-					const userId = winners[index];
+					const userId = winners[index].user;
 					const user = await interaction.client.users.fetch(userId).catch(() => null);
-					console.log(user);
 					winnersInfo.push({
 						username: user ? user.username : `Unknown (${userId})`,
 						prize: allPrizes[index]?.prize || "No prize",
+						ticket_number: winners[index].ticket_number,
 					});
 				}
 
 				let winnersText = "";
 				// add winnings to the looting bag
 				for (let index = 0; index < winners.length; index++) {
-					winnersText += `**(${index + 1})** ▸ ${userMention(winners[index])} ▸ ${allPrizes[index].prize}\n`;
+					winnersText += `**(${index + 1})** ▸ ${userMention(winners[index].user)} (Ticket #${winners[index].ticket_number}) ▸ ${
+						allPrizes[index].prize
+					}\n`;
 				}
 				const img = await createCommunityRaffleGif(winnersInfo, interaction);
 				const attachment = new AttachmentBuilder(img, { name: "winners.gif" });
@@ -129,6 +134,18 @@ module.exports = {
 				await CommunityRaffleTickets.destroy({ where: {}, truncate: true });
 				settings.status = false;
 				await settings.save();
+
+				const spamEmbed = new EmbedBuilder()
+					.setDescription(`🎉 **Community Raffle has ended!** Check the winners: ${channel}`)
+					.setColor("FF0000")
+					.setFooter({ text: `🏆 Winners announced!` })
+					.setTimestamp();
+
+				if (spamChannel) {
+					await spamChannel.send({
+						embeds: [spamEmbed],
+					});
+				}
 			}
 		} else if (action === "remove") {
 			// Remove tickets logic
@@ -139,16 +156,18 @@ module.exports = {
 					ephemeral: true,
 				});
 			}
+			const ticketNumbers = [];
 			for (let index = 0; index < amount; index++) {
 				if (userTickets[index]) {
 					await userTickets[index].destroy();
+					ticketNumbers.push(userTickets[index].ticket_number);
 				}
 			}
 
 			const allTickets = await CommunityRaffleTickets.count();
 
 			const embed = new EmbedBuilder()
-				.setDescription(`Removed **${amount}** ticket(s) from ${user}!`)
+				.setDescription(`🎟️ Removed **${amount}** ticket(s) from ${user}!\n▸ Ticket Numbers: ${ticketNumbers.join(", ")}`)
 				.setColor("ff0000")
 				.setFooter({ text: `${allTickets}/${settings.tickets_amount} tickets` });
 

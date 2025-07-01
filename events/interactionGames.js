@@ -213,7 +213,7 @@ module.exports = {
 			let stars = "";
 
 			for (let i = 0; i < rating; i++) {
-				stars += "⭐";
+				stars += "<:yellowstar:1389456622832582706>";
 			}
 
 			const customerText = `${process.env.FEEDBACK_CUSTOMER_EMOJI || "👥"} | \`Customer :\` <@${customer}>\n`;

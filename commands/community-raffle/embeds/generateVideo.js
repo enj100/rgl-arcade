@@ -40,9 +40,11 @@ module.exports = {
 			for (let i = 0; i < winners.length; i++) {
 				const username = winners[i].username;
 				const prize = winners[i].prize;
+				const ticketNumber = winners[i].ticket_number;
 				ctx.drawImage(ticket, 0, 0, 1024, 1024);
-				ctx.fillText(username, 420, 460);
-				ctx.fillText(prize, 420, 520);
+				ctx.fillText(`${username}`, 420, 420);
+				ctx.fillText(`(Ticket #${ticketNumber})`, 420, 480);
+				ctx.fillText(`${prize}`, 420, 540);
 				encoder.addFrame(ctx);
 			}
 

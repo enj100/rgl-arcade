@@ -29,6 +29,27 @@ module.exports = {
 				components,
 				ephemeral: true, // Make the reply visible only to the user who invoked the command
 			});
+		} else if (interaction?.customId === "community_raffle_change_spam_channel") {
+			const selectedChannelId = interaction.values[0];
+			const settings = await CommunityRaffleSettings.findOne({
+				where: { id: 0 },
+			});
+
+			if (settings.status) {
+				return await interaction.reply({
+					content: "*❗ You cannot change the channel while the raffle is active.*",
+					ephemeral: true,
+				});
+			}
+			settings.spam_channel = selectedChannelId;
+			await settings.save();
+
+			const { embeds, components } = await communityRaffleSettingsEmbed(interaction);
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true,
+			});
 		} else if (interaction?.customId === "community_raffle_change_channel") {
 			const selectedChannelId = interaction.values[0];
 			const settings = await CommunityRaffleSettings.findOne({
@@ -115,6 +136,12 @@ module.exports = {
 			if (isNaN(price) || price <= 0) {
 				return await interaction.reply({
 					content: "❗ Please enter a valid ticket price.",
+					ephemeral: true,
+				});
+			}
+			if (winners > tickets) {
+				return await interaction.reply({
+					content: "❗ Winners amount cannot be greater than tickets amount.",
 					ephemeral: true,
 				});
 			}
@@ -271,6 +298,8 @@ module.exports = {
 			}
 
 			const channel = await interaction.client.channels.fetch(settings.channel).catch(() => null);
+			const spamChannel = await interaction.client.channels.fetch(settings.spam_channel).catch(() => null);
+
 			if (!channel) {
 				return await interaction.reply({
 					content: "*❗ Raffle channel not found!*",
@@ -284,12 +313,15 @@ module.exports = {
 				// delete all tickets
 
 				const embed = new EmbedBuilder()
-					.setDescription(`📢 **Raffle was canceled!**`)
+					.setDescription(`📢 **Community Raffle was canceled!**`)
 					.setColor("ff0000")
 					.setFooter({ text: `❌ Canceled` });
 				await CommunityRaffleTickets.destroy({ where: {}, truncate: true });
 
 				await channel.send({ embeds: [embed] });
+				if (spamChannel) {
+					await spamChannel.send({ embeds: [embed] });
+				}
 			} else {
 				if (settings.ticket_price_tokens <= 0) {
 					return await interaction.reply({
@@ -337,6 +369,17 @@ module.exports = {
 					embeds: [embed],
 					components: [row],
 				});
+				if (spamChannel) {
+					const embed = new EmbedBuilder()
+						.setTitle(`🎟️ Community Raffle 🎟️`)
+						.setColor("FF0000")
+						.setDescription(`**▸ Community Raffle has started! 🥳 Join now: ** ${channel}`)
+						.setFooter({ text: `🎉 New Raffle!` })
+						.setTimestamp();
+					await spamChannel.send({
+						embeds: [embed],
+					});
+				}
 			}
 
 			await settings.save();
@@ -399,6 +442,8 @@ module.exports = {
 				});
 			}
 			const channel = await interaction.client.channels.fetch(settings.channel).catch(() => null);
+			const spamChannel = await interaction.client.channels.fetch(settings.spam_channel).catch(() => null);
+
 			if (!channel) {
 				return await interaction.reply({
 					content: "*❗ Raffle channel not found!*",
@@ -429,13 +474,18 @@ module.exports = {
 			userWallet.balance -= totalPrice;
 			await userWallet.save();
 
+			const ticketNumbers = [];
+
 			for (let index = 0; index < amount; index++) {
-				await CommunityRaffleTickets.create({ discord_id: interaction.user.id });
+				const ticket = await CommunityRaffleTickets.create({ discord_id: interaction.user.id });
+				ticketNumbers.push(ticket.ticket_number);
 			}
 
 			// Add tickets logic
 			const embed = new EmbedBuilder()
-				.setDescription(`:tickets: ${interaction.user} just bought **${amount} ticket(s)!**`)
+				.setDescription(
+					`:tickets: ${interaction.user} just bought **${amount} ticket(s)!**\n▸ Ticket Numbers: ${ticketNumbers.join(", ")}`
+				)
 				.setColor("ffffff")
 				.setFooter({ text: `${ticketsCount + amount}/${settings.tickets_amount} ticket(s)` });
 
@@ -463,26 +513,28 @@ module.exports = {
 				let winners = [];
 				for (let index = 0; index < settings.winners_amount; index++) {
 					const rnd = Math.floor(Math.random() * allTickets.length);
-					winners.push(allTickets[rnd].discord_id);
+					winners.push({ user: allTickets[rnd].discord_id, ticket_number: allTickets[rnd].ticket_number });
 					allTickets.splice(rnd, 1);
 				}
 
 				// Prepare winners info array with username and prize
 				let winnersInfo = [];
 				for (let index = 0; index < winners.length; index++) {
-					const userId = winners[index];
+					const userId = winners[index].user;
 					const user = await interaction.client.users.fetch(userId).catch(() => null);
-					console.log(user);
 					winnersInfo.push({
 						username: user ? user.username : `Unknown (${userId})`,
 						prize: allPrizes[index]?.prize || "No prize",
+						ticket_number: winners[index].ticket_number,
 					});
 				}
 
 				let winnersText = "";
 				// add winnings to the looting bag
 				for (let index = 0; index < winners.length; index++) {
-					winnersText += `**(${index + 1})** ▸ ${userMention(winners[index])} ▸ ${allPrizes[index].prize}\n`;
+					winnersText += `**(${index + 1})** ▸ ${userMention(winners[index].user)} (Ticket #${winners[index].ticket_number}) ▸ ${
+						allPrizes[index].prize
+					}\n`;
 				}
 				const img = await createCommunityRaffleGif(winnersInfo, interaction);
 				const attachment = new AttachmentBuilder(img, { name: "winners.gif" });
@@ -498,6 +550,18 @@ module.exports = {
 				await CommunityRaffleTickets.destroy({ where: {}, truncate: true });
 				settings.status = false;
 				await settings.save();
+
+				const spamEmbed = new EmbedBuilder()
+					.setDescription(`🎉 **Community Raffle has ended!** Check the winners: ${channel}`)
+					.setColor("FF0000")
+					.setFooter({ text: `🏆 Winners announced!` })
+					.setTimestamp();
+
+				if (spamChannel) {
+					await spamChannel.send({
+						embeds: [spamEmbed],
+					});
+				}
 			}
 		}
 	},

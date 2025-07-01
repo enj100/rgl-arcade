@@ -26,6 +26,6 @@ module.exports = {
 
 		const embed = createCalculatorEmbed(amount, interaction.client.serverSettings);
 
-		await interaction.reply({ embeds: [embed], ephemeral: true });
+		await interaction.reply({ embeds: [embed] });
 	},
 };

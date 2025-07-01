@@ -22,15 +22,22 @@ async function communityRaffleSettingsEmbed(interaction) {
 	const allPrizes = await CommunityRafflePrizes.findAll();
 
 	const logsChannelText = `__▸ Raffle Channel:__ ${settings.channel ? channelMention(settings.channel) : "❌ No channel set"}\n`;
+	const spamChannelText = `__▸ Announcements Channel:__ ${
+		settings.spam_channel ? channelMention(settings.spam_channel) : "❌ No channel set"
+	}\n`;
 	const winnersAmountText = `__▸ Winners Amount:__ ${settings.winners_amount}\n`;
 	const priceText = `__▸ Tickets Price:__ ${settings.ticket_price_tokens + " RGL-Tokens" || "❌ Not set"}\n`;
 	const statusText = `__▸ Status:__ ${settings.status ? "*✅ Active*" : "*❌ Inactive*"}\n`;
 	const ticketsAmountText = `__▸ Tickets Amount:__ ${settings.tickets_amount || "❌ Not set"}\n`;
 
+	const messageText = `**__▸ Message:__\n**${settings.message?.length > 0 ? settings.message : "❌ Not set"}`;
+
 	const embed = new EmbedBuilder()
 		.setTitle("🎟️ Community Raffle Settings")
 		.setColor("FFFFFF")
-		.setDescription(`${logsChannelText}${winnersAmountText}${ticketsAmountText}${priceText}${statusText}`);
+		.setDescription(
+			`${logsChannelText}${spamChannelText}${winnersAmountText}${ticketsAmountText}${priceText}${statusText}${messageText}`
+		);
 
 	const statusBtn = new ButtonBuilder()
 		.setCustomId("community_raffle_change_status")
@@ -50,6 +57,11 @@ async function communityRaffleSettingsEmbed(interaction) {
 	const channelSelectMenu = new ChannelSelectMenuBuilder()
 		.setCustomId("community_raffle_change_channel")
 		.setPlaceholder("ℹ️ Change Raffle Channel")
+		.setChannelTypes(ChannelType.GuildText);
+
+	const spamSelectMenu = new ChannelSelectMenuBuilder()
+		.setCustomId("community_raffle_change_spam_channel")
+		.setPlaceholder("ℹ️ Change Announcements Channel")
 		.setChannelTypes(ChannelType.GuildText);
 
 	let prizeSelectRow = null;
@@ -74,8 +86,9 @@ async function communityRaffleSettingsEmbed(interaction) {
 
 	const row1 = new ActionRowBuilder().addComponents(statusBtn, generalSettingsBtn, editEmbedBtn);
 	const row2 = new ActionRowBuilder().addComponents(channelSelectMenu);
+	const row3 = new ActionRowBuilder().addComponents(spamSelectMenu);
 
-	return { embeds: [embed], components: [row1, row2, prizeSelectRow] };
+	return { embeds: [embed], components: [row1, row2, row3, prizeSelectRow] };
 }
 
 module.exports = communityRaffleSettingsEmbed;
