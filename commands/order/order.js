@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, roleMention } = require("discord.js");
 const User = require("../wallet/models/User");
 const { logToChannel } = require("../../utils/logger");
 
@@ -38,10 +38,10 @@ module.exports = {
 				}
 			}
 		}
-		console.log(eligibleRank);
 
 		let rankChanged = false;
-		if (eligibleRank && wallet.rank !== eligibleRank.role_id) {
+
+		if (eligibleRank && wallet?.rank !== eligibleRank.role_id) {
 			// Remove old rank role if exists
 			if (wallet.rank) {
 				try {
@@ -51,8 +51,12 @@ module.exports = {
 			}
 			// Assign new rank role
 			try {
-				const member = await interaction.guild.members.fetch(user.id);
-				await member.roles.add(eligibleRank.role_id).catch(() => {});
+				const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+				if (member) {
+					await member.roles.add(eligibleRank.role_id).catch((e) => {
+						console.log(e);
+					});
+				}
 			} catch {}
 			wallet.rank = eligibleRank.role_id;
 			rankChanged = true;
@@ -67,9 +71,11 @@ module.exports = {
 
 		await wallet.save();
 
-		let replyMsg = `✅ Successfully added **${amount.toFixed(2)} (+${bonus.toFixed(2)}) RGL-Tokens** to ${user}'s wallet.`;
+		let replyMsg = `<:red_check:1381871266855649360> Successfully added **${amount.toFixed(2)} (+${bonus.toFixed(
+			2
+		)}) Tokens** to ${user}'s wallet balance.`;
 		if (rankChanged) {
-			replyMsg += `\n🏅 ${user} has been promoted to a new rank!`;
+			replyMsg += `\n<:arcade:1387956639578984589> ${user} has been promoted to ${roleMention(eligibleRank.role_id)}!`;
 		}
 
 		await logToChannel(
