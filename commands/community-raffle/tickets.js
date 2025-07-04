@@ -82,6 +82,12 @@ module.exports = {
 			});
 			await interaction.reply({ content: `✅ Added ${amount} tickets for ${user}`, ephemeral: true });
 
+			// add a role to user
+			const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+			if (member && settings.raffle_role) {
+				await member.roles.add(settings.raffle_role).catch(() => null);
+			}
+
 			// check if tickets are sold and run the raffle!
 			if (ticketsCount + amount === settings.tickets_amount) {
 				settings.status = false;

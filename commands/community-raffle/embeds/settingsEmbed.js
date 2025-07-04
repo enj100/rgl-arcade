@@ -22,6 +22,8 @@ async function communityRaffleSettingsEmbed(interaction) {
 	const allPrizes = await CommunityRafflePrizes.findAll();
 
 	const logsChannelText = `__▸ Raffle Channel:__ ${settings.channel ? channelMention(settings.channel) : "❌ No channel set"}\n`;
+	const raffleRoleText = `__▸ Raffle Role:__ ${settings.raffle_role ? roleMention(settings.raffle_role) : "❌ No role set"}\n`;
+
 	const spamChannelText = `__▸ Announcements Channel:__ ${
 		settings.spam_channel ? channelMention(settings.spam_channel) : "❌ No channel set"
 	}\n`;
@@ -36,7 +38,7 @@ async function communityRaffleSettingsEmbed(interaction) {
 		.setTitle("🎟️ Community Raffle Settings")
 		.setColor("FFFFFF")
 		.setDescription(
-			`${logsChannelText}${spamChannelText}${winnersAmountText}${ticketsAmountText}${priceText}${statusText}${messageText}`
+			`${raffleRoleText}${logsChannelText}${spamChannelText}${winnersAmountText}${ticketsAmountText}${priceText}${statusText}${messageText}`
 		);
 
 	const statusBtn = new ButtonBuilder()
@@ -64,6 +66,12 @@ async function communityRaffleSettingsEmbed(interaction) {
 		.setPlaceholder("ℹ️ Change Announcements Channel")
 		.setChannelTypes(ChannelType.GuildText);
 
+	const roleSelectMenu = new RoleSelectMenuBuilder()
+		.setCustomId("community_raffle_change_role")
+		.setPlaceholder("ℹ️ Change Raffle Role")
+		.setMinValues(1)
+		.setMaxValues(1);
+
 	let prizeSelectRow = null;
 	if (settings.winners_amount && settings.winners_amount > 0) {
 		const options = [];
@@ -87,8 +95,9 @@ async function communityRaffleSettingsEmbed(interaction) {
 	const row1 = new ActionRowBuilder().addComponents(statusBtn, generalSettingsBtn, editEmbedBtn);
 	const row2 = new ActionRowBuilder().addComponents(channelSelectMenu);
 	const row3 = new ActionRowBuilder().addComponents(spamSelectMenu);
+	const row4 = new ActionRowBuilder().addComponents(roleSelectMenu);
 
-	return { embeds: [embed], components: [row1, row2, row3, prizeSelectRow] };
+	return { embeds: [embed], components: [row1, row2, row3, row4, prizeSelectRow] };
 }
 
 module.exports = communityRaffleSettingsEmbed;

@@ -22,7 +22,28 @@ module.exports = {
 	name: Events.InteractionCreate,
 	async execute(interaction) {
 		if (interaction.isChatInputCommand()) return;
-		else if (interaction?.customId === "other_settings" && interaction?.values[0] === "community_raffle_settings") {
+		else if (interaction?.customId === "community_raffle_change_role") {
+			const selectedRoleId = interaction.values[0];
+			const settings = await CommunityRaffleSettings.findOne({
+				where: { id: 0 },
+			});
+
+			if (settings.status) {
+				return await interaction.reply({
+					content: "*❗ You cannot change the role while the raffle is active.*",
+					ephemeral: true,
+				});
+			}
+			settings.raffle_role = selectedRoleId;
+			await settings.save();
+
+			const { embeds, components } = await communityRaffleSettingsEmbed(interaction);
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true,
+			});
+		} else if (interaction?.customId === "other_settings" && interaction?.values[0] === "community_raffle_settings") {
 			const { embeds, components } = await communityRaffleSettingsEmbed(interaction);
 			await interaction.update({
 				embeds,
@@ -497,6 +518,12 @@ module.exports = {
 				content: `*✅ You just bought ${amount} community raffle ticket(s)!*`,
 				ephemeral: true,
 			});
+
+			// add a role to user
+			const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+			if (member && settings.raffle_role) {
+				await member.roles.add(settings.raffle_role).catch(() => null);
+			}
 
 			// check if tickets are sold and run the raffle!
 			if (ticketsCount + amount === settings.tickets_amount) {

@@ -76,23 +76,28 @@ async function processGameResult({ player1, player2, winner, amount, player1Scor
 	}
 
 	const message =
-		`🎮 ${gameName} between ${userMention(player1)} and ${userMention(player2)}\n` +
-		`🟢 Player 1 (${userMention(player1)}) scored: **${player1Score}**\n` +
+		`\`${gameName}\`\n` +
+		`⚪ Player 1 (${userMention(player1)}) scored: **${player1Score}**\n` +
 		`🔴 Player 2 (${userMention(player2)}) scored: **${player2Score}**\n` +
-		`🥇 ${winner === "Tie" ? "It's a tie!" : `The winner is ${userMention(winner)}!`}\n` +
-		`__💵 Bet Amount: ${amount.toFixed(2)} RGL-Tokens__\n`;
+		`<:rgl_token:1387626234413846638> \`Bet Amount:\` ${amount.toFixed(2)} Tokens\n\n` +
+		`<:trophy:1387963764397179040> ${winner === "Tie" ? "It's a tie!" : `Winner is ${userMention(winner)}!`}\n`;
 
 	if (winner !== "Tie") {
-		const messageForUsers = `🏆 ${userMention(winner)} won **${(amount * 2).toFixed(2)} RGL-Tokens** against ${userMention(
-			winner === player1 ? player2 : player1
-		)} in the **${gameName}**!\n`;
-		// delay 5 sec before sending the message to users
+		const messageForUsers = `<:trophy:1387963764397179040> ${userMention(winner)} won **${(amount * 2).toFixed(
+			2
+		)} Tokens** against ${userMention(winner === player1 ? player2 : player1)} in the **${gameName}**!\n`;
+		// delay 15 sec before sending the message to users
 		setTimeout(async () => {
-			await logToChannel(messageForUsers, interaction.client.gamesLogsChannel);
+			await logToChannel(
+				messageForUsers,
+				interaction.client.gamesLogsChannel,
+				"FF0000",
+				"<:games:1381870887623594035> Game Results"
+			);
 		}, 15000);
 	}
 
-	await logToChannel(message, interaction.client.logsChannel);
+	await logToChannel(message, interaction.client.logsChannel, "FF0000", "<:games:1381870887623594035> Game Results");
 }
 
 module.exports = { processGameResult };

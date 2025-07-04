@@ -2,9 +2,9 @@ const { EmbedBuilder } = require("discord.js");
 
 module.exports = {
 	name: "log",
-	async logToChannel(message, logsChannel, color = "FF0000") {
+	async logToChannel(message, logsChannel, color = "FF0000", title = "🆕 New Log") {
 		const embed = new EmbedBuilder()
-			.setTitle("🆕 New Log")
+			.setTitle(`${title}`)
 			.setDescription(message ?? "-")
 			.setColor(color)
 			.setTimestamp();

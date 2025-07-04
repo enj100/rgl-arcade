@@ -98,9 +98,9 @@ module.exports = {
 		setTimeout(async () => {
 			const embed = new EmbedBuilder()
 				.setDescription(
-					`🎲 ${interaction.user} rolled a **${item.id + 1}**! 🎊 You won ⟫ *__${
-						item.item_name
-					}__* ⟪ (**${item.item_value.toFixed(2)} RGL-Tokens**) 🎊`
+					`🎲 ${interaction.user} rolled a **${item.id}**! 🎊 You won ⟫ *__${item.item_name}__* ⟪ (**${item.item_value.toFixed(
+						2
+					)} RGL-Tokens**) 🎊`
 				)
 				.setColor("FFFF00");
 
@@ -108,10 +108,12 @@ module.exports = {
 				embeds: [embed],
 			});
 			await logToChannel(
-				`🎲 ${interaction.user} rolled a **${item.id + 1}** and won **${item.item_name}** worth **${item.item_value.toFixed(
+				`🎲 ${interaction.user} rolled a **${item.id}** and won **${item.item_name}** worth **${item.item_value.toFixed(
 					2
-				)} RGL-Tokens**!`,
-				interaction.client.logsChannel
+				)} Tokens**!`,
+				interaction.client.logsChannel,
+				"FF0000",
+				"<:games:1381870887623594035> Game Results"
 			);
 		}, 2000);
 

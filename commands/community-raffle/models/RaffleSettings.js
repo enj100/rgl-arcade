@@ -58,6 +58,11 @@ const CommunityRaffleSettings = sequelize.define("community_raffle_settings", {
 		allowNull: true,
 		defaultValue: null,
 	},
+	raffle_role: {
+		type: DataTypes.STRING(64),
+		allowNull: true,
+		defaultValue: null,
+	},
 });
 
 module.exports = CommunityRaffleSettings;
