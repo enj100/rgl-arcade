@@ -16,11 +16,14 @@ const CommunityRaffleSettings = require("../commands/community-raffle/models/Raf
 const CommunityRaffleTickets = require("../commands/community-raffle/models/RaffleTickets");
 const FeedbackSettings = require("../commands/feedback/models/feedbackSettings");
 const Feedbacks = require("../commands/feedback/models/feedbacks");
+const Giveaway = require("../commands/giveaways/models/giveaways");
+const GiveawayExtraEntriesSets = require("../commands/giveaways/models/giveawayExtraEntries");
+const GiveawayUsers = require("../commands/giveaways/models/giveawayUsers");
 
 async function syncDatabaseModels() {
 	console.log("⏳ Syncing database models...");
 
-	await sequelize.sync({ alter: true });
+	await sequelize.sync();
 	console.log("✅ Database models synced successfully.");
 }
 

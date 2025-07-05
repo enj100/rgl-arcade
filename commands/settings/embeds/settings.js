@@ -62,6 +62,7 @@ async function buildSettingsEmbed(interaction) {
 				new StringSelectMenuOptionBuilder().setLabel("🎟️ Community Raffle Settings").setValue("community_raffle_settings"),
 				new StringSelectMenuOptionBuilder().setLabel("🏁 Monthly Race Settings").setValue("monthly_race_settings"),
 				new StringSelectMenuOptionBuilder().setLabel("💬 Feedback Settings").setValue("feedback_settings"),
+				new StringSelectMenuOptionBuilder().setLabel("🎁 Giveaways Settings").setValue("giveaways_settings"),
 			])
 	);
 
