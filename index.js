@@ -16,7 +16,17 @@ process.on("uncaughtException", (error) => {
 });
 
 const index = (async function () {
-	const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+	const client = new Client({
+		intents: [
+			GatewayIntentBits.Guilds,
+			GatewayIntentBits.GuildInvites,
+			GatewayIntentBits.GuildMembers,
+			GatewayIntentBits.GuildPresences,
+			GatewayIntentBits.GuildMessages,
+			GatewayIntentBits.MessageContent,
+			GatewayIntentBits.GuildMessageReactions,
+		],
+	});
 
 	client.commands = new Collection();
 	client.serverSettings = null;
@@ -25,6 +35,7 @@ const index = (async function () {
 	client.goodiebagItems = null;
 	client.logsChannel = null;
 	client.gamesLogsChannel = null;
+	client.guessGameSettings = null;
 	const foldersPath = path.join(__dirname, "commands");
 	const commandFolders = fs.readdirSync(foldersPath);
 

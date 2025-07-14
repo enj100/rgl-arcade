@@ -63,6 +63,8 @@ async function buildSettingsEmbed(interaction) {
 				new StringSelectMenuOptionBuilder().setLabel("🏁 Monthly Race Settings").setValue("monthly_race_settings"),
 				new StringSelectMenuOptionBuilder().setLabel("💬 Feedback Settings").setValue("feedback_settings"),
 				new StringSelectMenuOptionBuilder().setLabel("🎁 Giveaways Settings").setValue("giveaways_settings"),
+				new StringSelectMenuOptionBuilder().setLabel("🍯 Jackpot Settings").setValue("jackpot_settings"),
+				new StringSelectMenuOptionBuilder().setLabel("❓ 1-1000 Game Settings").setValue("guess_game_settings"),
 			])
 	);
 
