@@ -48,6 +48,11 @@ const ShopSettings = sequelize.define("shop_settings", {
 		allowNull: true,
 		defaultValue: false,
 	},
+	tickets_logs_channel: {
+		type: DataTypes.STRING(64),
+		allowNull: true,
+		defaultValue: null,
+	},
 });
 
 module.exports = ShopSettings;

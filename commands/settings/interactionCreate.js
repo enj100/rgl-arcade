@@ -1,12 +1,29 @@
 const { Events, ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle } = require("discord.js");
 const Settings = require("./models/settings");
 const buildSettingsEmbed = require("./embeds/settings");
+const ShopSettings = require("../shop/models/ShopSettings");
 
 module.exports = {
 	name: Events.InteractionCreate,
 	async execute(interaction) {
 		if (interaction.isChatInputCommand()) return;
-		else if (interaction?.customId === "settings_logs_channel_select") {
+		else if (interaction?.customId === "settings_tickets_logs_channel_select") {
+			const selectedChannelId = interaction.values[0];
+
+			const settings = await ShopSettings.findOne({
+				where: { id: 0 },
+			});
+			settings.tickets_logs_channel = selectedChannelId;
+			await settings.save();
+			interaction.client.shopSettings = settings;
+
+			const { embeds, components } = await buildSettingsEmbed(interaction);
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true, // Make the reply visible only to the user who invoked the command
+			});
+		} else if (interaction?.customId === "settings_logs_channel_select") {
 			const selectedChannelId = interaction.values[0];
 
 			const settings = await Settings.findOne({

@@ -8,67 +8,69 @@ const token = process.env.TOKEN;
 
 // Global error handling
 process.on("unhandledRejection", (reason, promise) => {
-    console.error("Unhandled Rejection at:", promise, "reason:", reason);
+	console.error("Unhandled Rejection at:", promise, "reason:", reason);
 });
 
 process.on("uncaughtException", (error) => {
-    console.error("Uncaught Exception thrown:", error);
+	console.error("Uncaught Exception thrown:", error);
 });
 
 const index = (async function () {
-    const client = new Client({
-        intents: [
-            GatewayIntentBits.Guilds,
-            GatewayIntentBits.GuildInvites,
-            GatewayIntentBits.GuildMembers,
-            GatewayIntentBits.GuildPresences,
-            GatewayIntentBits.GuildMessages,
-            GatewayIntentBits.MessageContent,
-            GatewayIntentBits.GuildMessageReactions,
-        ],
-    });
+	const client = new Client({
+		intents: [
+			GatewayIntentBits.Guilds,
+			GatewayIntentBits.GuildInvites,
+			GatewayIntentBits.GuildMembers,
+			GatewayIntentBits.GuildPresences,
+			GatewayIntentBits.GuildMessages,
+			GatewayIntentBits.MessageContent,
+			GatewayIntentBits.GuildMessageReactions,
+		],
+	});
 
-    client.commands = new Collection();
-    client.serverSettings = null;
-    client.ranks = new Collection();
-    client.goodiebagSettings = null;
-    client.goodiebagItems = null;
-    client.logsChannel = null;
-    client.gamesLogsChannel = null;
-    client.guessGameSettings = null;
-    client.shopSettings = null;
-    const foldersPath = path.join(__dirname, "commands");
-    const commandFolders = fs.readdirSync(foldersPath);
+	client.commands = new Collection();
+	client.serverSettings = null;
+	client.ranks = new Collection();
+	client.goodiebagSettings = null;
+	client.goodiebagItems = null;
+	client.logsChannel = null;
+	client.gamesLogsChannel = null;
+	client.guessGameSettings = null;
+	client.shopSettings = null;
+	client.wheelSettings = null;
+	client.wheelItems = null;
+	const foldersPath = path.join(__dirname, "commands");
+	const commandFolders = fs.readdirSync(foldersPath);
 
-    for (const folder of commandFolders) {
-        const commandFiles = fs.readdirSync(`./commands/${folder}`).filter((file) => file.endsWith(".js"));
-        for (const file of commandFiles) {
-            const command = require(`./commands/${folder}/${file}`);
-            if (command.data) {
-                client.commands.set(command.data.name, command);
-            }
-        }
+	for (const folder of commandFolders) {
+		const commandFiles = fs.readdirSync(`./commands/${folder}`).filter((file) => file.endsWith(".js"));
+		for (const file of commandFiles) {
+			const command = require(`./commands/${folder}/${file}`);
+			if (command.data) {
+				client.commands.set(command.data.name, command);
+			}
+		}
 
-        const interactionFile = `./commands/${folder}/interactionCreate.js`;
-        if (fs.existsSync(interactionFile)) {
-            const interaction = require(interactionFile);
-            client.on(interaction.name, (...args) => interaction.execute(...args, client));
-        }
-    }
+		const interactionFile = `./commands/${folder}/interactionCreate.js`;
+		if (fs.existsSync(interactionFile)) {
+			const interaction = require(interactionFile);
+			client.on(interaction.name, (...args) => interaction.execute(...args, client));
+		}
+	}
 
-    const eventsPath = path.join(__dirname, "events");
-    const eventFiles = fs.readdirSync(eventsPath).filter((file) => file.endsWith(".js"));
+	const eventsPath = path.join(__dirname, "events");
+	const eventFiles = fs.readdirSync(eventsPath).filter((file) => file.endsWith(".js"));
 
-    for (const file of eventFiles) {
-        const filePath = path.join(eventsPath, file);
-        const event = require(filePath);
+	for (const file of eventFiles) {
+		const filePath = path.join(eventsPath, file);
+		const event = require(filePath);
 
-        if (event.once) {
-            client.once(event.name, (...args) => event.execute(...args));
-        } else {
-            client.on(event.name, (...args) => event.execute(...args));
-        }
-    }
+		if (event.once) {
+			client.once(event.name, (...args) => event.execute(...args));
+		} else {
+			client.on(event.name, (...args) => event.execute(...args));
+		}
+	}
 
-    client.login(token);
+	client.login(token);
 })();

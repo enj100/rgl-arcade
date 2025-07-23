@@ -41,6 +41,9 @@ const shopEmbed = require("../commands/shop/embeds/shop");
 const ShopItems = require("../commands/shop/models/Items");
 const { createTicket } = require("../utils/createChannel");
 const { createTranscriptEmbed } = require("../utils/transcriptsEmbed");
+const wheelSettingsEmbed = require("../commands/wheel/embeds/settings");
+const WheelSettings = require("../commands/wheel/models/Settings");
+const WheelItems = require("../commands/wheel/models/Items");
 
 function shuffleArray(array) {
 	for (let i = array.length - 1; i > 0; i--) {
@@ -54,6 +57,270 @@ module.exports = {
 	name: Events.InteractionCreate,
 	async execute(interaction) {
 		if (interaction.isChatInputCommand()) return;
+		///////////////////////////////////////////////////
+		////////////////// WHEEL /////////////////////////
+		///////////////////////////////////////////////////
+		else if (interaction?.customId === "other_settings" && interaction?.values[0] === "wheel_settings") {
+			const { embeds, components } = await wheelSettingsEmbed(interaction);
+
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true, // Make the reply visible only to the user who invoked the command
+			});
+		} else if (interaction?.customId === "wheel_main_settings") {
+			const val = interaction.values[0];
+			const settings = await WheelSettings.findOne({ where: { id: 0 } });
+
+			if (val === "status") {
+				settings.status ? (settings.status = false) : (settings.status = true);
+				await settings.save();
+				interaction.client.wheelSettings = settings;
+				const { embeds, components } = await wheelSettingsEmbed(interaction);
+
+				await interaction.update({ embeds, components, ephemeral: true });
+			} else if (val === "price") {
+				const modal = new ModalBuilder().setCustomId(`edit_wheel_price`).setTitle("Edit the price");
+
+				const price = new TextInputBuilder()
+					.setCustomId("price")
+					.setValue(`${settings.price}`)
+					.setLabel("Wheel Price")
+					.setStyle(TextInputStyle.Short);
+
+				const first = new ActionRowBuilder().addComponents(price);
+
+				modal.addComponents(first);
+				await interaction.showModal(modal);
+			}
+		} else if (interaction.customId && interaction.customId.includes("edit_wheel_price")) {
+			const price = interaction.fields.getTextInputValue("price");
+
+			const settings = await WheelSettings.findOne({ where: { id: 0 } });
+			if (settings.status) {
+				await interaction.reply({ content: `❗ Please turn off the wheel to be able to make changes!`, ephemeral: true });
+				return;
+			}
+			if (isNaN(price) || price <= 0) {
+				await interaction.reply({ content: `❗ Make sure the price is a positive number!`, ephemeral: true });
+				return;
+			}
+
+			settings.price = price;
+			await settings.save();
+			interaction.client.wheelSettings = settings;
+
+			const { embeds, components } = await wheelSettingsEmbed(interaction);
+
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true, // Make the reply visible only to the user who invoked the command
+			});
+		} else if (interaction?.customId?.startsWith("wheel_items_edit-")) {
+			const id = interaction.values[0];
+			const item = await WheelItems.findOne({ where: { id: +id } });
+			if (!item) {
+				return await interaction.reply({
+					content: "*❗ Item not found!*",
+					ephemeral: true,
+				});
+			}
+			const modal = new ModalBuilder().setCustomId(`wheel_items_edit_submit-${item.id}`).setTitle("Edit an Item");
+
+			const itemValue = new TextInputBuilder()
+				.setCustomId("itemValue")
+				.setValue(`${item.item_value}`)
+				.setLabel("Item Value(in RGL-Tokens)")
+				.setStyle(TextInputStyle.Short);
+
+			const probability = new TextInputBuilder()
+				.setCustomId("probability")
+				.setValue(`${item.probability}`)
+				.setLabel("Probability(%)")
+				.setStyle(TextInputStyle.Short);
+
+			const second = new ActionRowBuilder().addComponents(itemValue);
+			const third = new ActionRowBuilder().addComponents(probability);
+
+			modal.addComponents(second);
+			modal.addComponents(third);
+
+			await interaction.showModal(modal);
+		} else if (interaction?.customId?.startsWith("wheel_items_edit_submit-")) {
+			const id = interaction.customId.split("-")[1];
+			const itemValue = interaction.fields.getTextInputValue("itemValue");
+			const probability = interaction.fields.getTextInputValue("probability");
+			const settings = await WheelSettings.findOne({ where: { id: 0 } });
+			if (settings.status) {
+				return await interaction.reply({
+					content: `❗ Please turn off the wheel to be able to make changes!`,
+					ephemeral: true,
+				});
+			}
+			if (isNaN(itemValue) || isNaN(probability)) {
+				return await interaction.reply({ content: `❗ Make sure item value and probability are numbers!`, ephemeral: true });
+			}
+			const item = await WheelItems.findOne({ where: { id: +id } });
+
+			item.item_value = itemValue;
+			item.probability = probability;
+			await item.save();
+			interaction.client.wheelItems = await WheelItems.findAll();
+
+			const { embeds, components } = await wheelSettingsEmbed(interaction);
+
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true, // Make the reply visible only to the user who invoked the command
+			});
+		} else if (interaction?.customId === "wheel_check_items") {
+			const items = await WheelItems.findAll({ order: [["item_value", "DESC"]] });
+			const settings = interaction.client.wheelSettings || (await WheelSettings.findOne({ where: { id: 0 } }));
+			const serverSettings = interaction.client.serverSettings;
+			if (items.length === 0) {
+				return await interaction.reply({
+					content: `❗ No items have been found.`,
+					ephemeral: true,
+				});
+			}
+			if (!settings.status) {
+				return await interaction.reply({
+					content: `❗ Wheel is offline at the moment!`,
+					ephemeral: true,
+				});
+			}
+
+			const itemList = items
+				.map((item, index) => `${index + 1}. \`${item.item_name}\` - ${item.item_value} RGL-Tokens`)
+				.join("\n");
+
+			const embed = new EmbedBuilder().setTitle("🛞 Wheel Items").setDescription(itemList).setColor("FF0000");
+
+			if (serverSettings?.color) {
+				embed.setColor(serverSettings.color);
+			}
+			if (serverSettings?.thumbnail) {
+				embed.setThumbnail(serverSettings.thumbnail);
+				embed.setFooter({
+					iconURL: serverSettings.thumbnail,
+					text: serverSettings.brand_name || "RGL-Arcade",
+				});
+			}
+
+			await interaction.reply({
+				embeds: [embed],
+				ephemeral: true, // Make the reply visible only to the user who invoked the command
+			});
+		}
+		///////////////////////////////////////////////////
+		////////////////// COIN FLIP DUEL /////////////////
+		///////////////////////////////////////////////////
+		else if (interaction?.customId?.startsWith("coin_flip_accept-")) {
+			const [action, player1, player2, amount] = interaction.customId.split("-");
+			const parsedAmount = parseFloat(amount);
+			const settings = interaction.client.serverSettings;
+
+			// Handle the acceptance of the coin flip duel
+			if (isNaN(amount) || parseFloat(amount) <= 0) {
+				return await interaction.reply({
+					content: `*❗ Invalid amount specified!*`,
+					ephemeral: true,
+				});
+			}
+			if (!interaction.user.id.includes(player2)) {
+				return await interaction.reply({
+					content: `*❗ You cannot accept this whip duel!*`,
+					ephemeral: true,
+				});
+			}
+
+			const [player1Wallet] = await User.findOrCreate({
+				where: { discord_id: player1 },
+				defaults: { discord_id: player1 },
+			});
+			const [player2Wallet] = await User.findOrCreate({
+				where: { discord_id: player2 },
+				defaults: { discord_id: player2 },
+			});
+
+			if (player1Wallet.balance < parseFloat(amount) || player2Wallet.balance < parseFloat(amount)) {
+				return await interaction.reply({
+					content: `*❗ One of the players does not have enough RGL-Tokens to play this coin flip duel!*`,
+					ephemeral: true,
+				});
+			}
+
+			// 1. Randomly pick winner side
+			const sides = ["heads", "tails"];
+			const winnerSide = sides[Math.floor(Math.random() * sides.length)];
+
+			// randomly assign sides for each player
+			const player1Side = Math.random() < 0.5 ? "heads" : "tails";
+			const player2Side = player1Side === "heads" ? "tails" : "heads";
+
+			// check the winners
+			const winner = winnerSide === player1Side ? player1 : player2;
+
+			await processGameResult({
+				player1,
+				player2,
+				winner,
+				amount,
+				player1Score: "-",
+				player2Score: "-",
+				gameName: "🪙 Coin Flip Duel",
+				interaction,
+			});
+
+			const gifsDir = path.join(__dirname, `../commands/coin/assets/${winnerSide}`);
+			const gifFiles = fs.readdirSync(gifsDir);
+			const randomGif = gifFiles[Math.floor(Math.random() * gifFiles.length)];
+			console.log(`Selected GIF: ${randomGif}`);
+			const gifPath = path.join(gifsDir, randomGif);
+			const attachment = new AttachmentBuilder(gifPath, { name: randomGif });
+
+			const editedEmbed = EmbedBuilder.from(interaction.message.embeds[0]);
+
+			editedEmbed
+				.setImage(`attachment://${randomGif}`)
+				.setDescription(
+					`🟢 **[${player1Side.toUpperCase()} - ${player1Side === "tails" ? "1" : "R"}]:** ${userMention(
+						player1
+					)}\n🔴 **[${player2Side.toUpperCase()} - ${player2Side === "tails" ? "1" : "R"}]:** ${userMention(
+						player2
+					)}\n\n▸ **Bet:** ${parsedAmount.toFixed(2)} RGL-Tokens`
+				);
+
+			await interaction.update({
+				embeds: [editedEmbed],
+				files: [attachment],
+				components: [],
+			});
+		} else if (interaction?.customId?.startsWith("coin_flip_decline-")) {
+			const [action, player1, player2] = interaction.customId.split("-");
+			if (!interaction.user.id.includes(player1) && !interaction.user.id.includes(player2)) {
+				return await interaction.reply({
+					content: `*❗ You cannot decline this coin flip duel!*`,
+					ephemeral: true,
+				});
+			}
+
+			const canceledBtn = new ActionRowBuilder().addComponents(
+				new ButtonBuilder()
+					.setCustomId(`coin_flip_canceled-${player1}-${player2}`)
+					.setLabel("❌ Coin Flip Canceled")
+					.setStyle(ButtonStyle.Secondary)
+					.setDisabled(true)
+			);
+
+			await interaction.update({
+				content: `*❌ ${interaction.user} has declined the Coin Flip Duel.*`,
+				components: [canceledBtn],
+				ephemeral: true,
+			});
+		}
 		///////////////////////////////////////////////////
 		////////////////// SHOP SETTINGS //////////////////
 		///////////////////////////////////////////////////
@@ -203,7 +470,11 @@ module.exports = {
 			const settings = interaction.client.shopSettings;
 			const channel = await interaction.client.channels.fetch(channelId).catch((e) => null);
 			if (channel) {
-				const openShopButton = new ButtonBuilder().setCustomId("open_shop").setLabel("🏪 Open Shop").setStyle(ButtonStyle.Danger);
+				const openShopButton = new ButtonBuilder()
+					.setCustomId("open_shop")
+					.setLabel("Browse Shop")
+					.setEmoji("<:halfarrow:1393028711766294560>")
+					.setStyle(ButtonStyle.Danger);
 				const row = new ActionRowBuilder().addComponents(openShopButton);
 				await channel.send({
 					content: `${settings.shop_image ? settings.shop_image : ""}`,
@@ -426,7 +697,6 @@ module.exports = {
 			const parts = interaction.customId.split("-");
 			const itemId = parts[1];
 			const page = parseInt(parts[2], 10);
-			console.log("Editing item:", itemId, "on page:", page);
 
 			const name = interaction.fields.getTextInputValue("shop_item_name");
 			const description = interaction.fields.getTextInputValue("shop_item_description") || null;
@@ -607,13 +877,13 @@ module.exports = {
 			});
 		} else if (interaction?.customId?.startsWith("close_shop_ticket-")) {
 			const customerId = interaction.customId.split("-")[1];
-			const settings = interaction.client.serverSettings;
+			const settings = interaction.client.shopSettings;
 			const transcript = await discordTranscripts.createTranscript(interaction.channel, {
 				maxFileSize: 1048576,
 				returnType: "attachment",
 			});
 
-			const logsChannel = await interaction.client.channels.fetch(settings.logs_channel).catch(() => null);
+			const logsChannel = await interaction.client.channels.fetch(settings.tickets_logs_channel).catch(() => null);
 			if (logsChannel) {
 				const transcriptFile = await logsChannel.send({ files: [transcript] });
 
