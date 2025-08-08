@@ -1,4 +1,12 @@
-const { Events, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require("discord.js");
+const {
+	Events,
+	EmbedBuilder,
+	ButtonBuilder,
+	ActionRowBuilder,
+	ButtonStyle,
+	AttachmentBuilder,
+	userMention,
+} = require("discord.js");
 const { registerCommands } = require("../registerCommands");
 const Settings = require("../commands/settings/models/settings");
 const sequelize = require("../database/database");
@@ -28,6 +36,13 @@ const GuessGameSettings = require("../commands/1-1000/models/1-1000_settings");
 const ShopSettings = require("../commands/shop/models/ShopSettings");
 const WheelSettings = require("../commands/wheel/models/Settings");
 const WheelItems = require("../commands/wheel/models/Items");
+const SubSettings = require("../commands/subs/models/SubSettings");
+const Sub = require("../commands/subs/models/Subs");
+const FpLiveSettings = require("../commands/fp-live/models/Settings");
+const FpLiveBets = require("../commands/fp-live/models/Bets");
+const buildLiveFpEmbed = require("../commands/fp-live/embeds/game");
+const { createFpLiveGif } = require("../commands/fp-live/embeds/generateGif");
+const { logToChannel } = require("../utils/logger");
 
 function shuffleArray(array) {
 	for (let i = array.length - 1; i > 0; i--) {
@@ -162,6 +177,21 @@ async function fetchInitialData(client) {
 		await WheelItems.create({ id: 16, item_name: `Weeds`, item_value: 0, probability: 0 });
 	}
 	client.wheelItems = await WheelItems.findAll();
+
+	await SubSettings.findOrCreate({
+		where: { id: 0 },
+		defaults: {
+			id: 0,
+		},
+	});
+
+	[client.fpLiveSettings] = await FpLiveSettings.findOrCreate({
+		where: { id: 0 },
+		defaults: {
+			id: 0,
+		},
+	});
+	await FpLiveBets.sync({ alter: true });
 }
 
 module.exports = {
@@ -172,6 +202,109 @@ module.exports = {
 		await syncDatabaseModels();
 		await fetchInitialData(client);
 		// await registerCommands();
+
+		// live fp
+		cron.schedule("*/5 * * * *", async () => {
+			const settings = client.fpLiveSettings;
+
+			if (settings.status) {
+				// announce a winner
+				settings.bets_status = false;
+
+				const { winnerId, gif } = await createFpLiveGif(client);
+				const allbets = await FpLiveBets.findAll();
+				const payoutMultiplier = settings.payout_percent;
+				let totalPot = 0;
+				let totalPayout = 0;
+				let winnersText = "";
+				let logText = "";
+				if (winnerId === "Hans") {
+					// Handle Hans winning
+					for (const bet of allbets) {
+						logText += `${userMention(bet.discord_id)}: H: ${bet.bet_hans} B: ${bet.bet_bob}\n`;
+
+						if (bet.bet_hans > 0) {
+							const [user] = await User.findOrCreate({
+								where: { discord_id: bet.discord_id },
+								defaults: { discord_id: bet.discord_id },
+							});
+							const totalRounded = (bet.bet_hans * payoutMultiplier).toFixed(2);
+							user.balance += parseFloat(totalRounded);
+							totalPayout += parseFloat(totalRounded);
+							await user.save();
+							winnersText += `${userMention(user.discord_id)}(${totalRounded}),`;
+						}
+						totalPot += bet.bet_hans;
+						totalPot += bet.bet_bob;
+						await bet.destroy();
+					}
+				} else if (winnerId === "Bob") {
+					for (const bet of allbets) {
+						logText += `${userMention(bet.discord_id)}: H: ${bet.bet_hans} B: ${bet.bet_bob}\n`;
+
+						if (bet.bet_bob > 0) {
+							const [user] = await User.findOrCreate({
+								where: { discord_id: bet.discord_id },
+								defaults: { discord_id: bet.discord_id },
+							});
+							const totalRounded = (bet.bet_bob * payoutMultiplier).toFixed(2);
+							user.balance += parseFloat(totalRounded);
+							totalPayout += parseFloat(totalRounded);
+							await user.save();
+							winnersText += `${userMention(user.discord_id)}(${totalRounded}),`;
+						}
+						totalPot += bet.bet_hans;
+						totalPot += bet.bet_bob;
+						await bet.destroy();
+					}
+				} else {
+					// tie
+					for (const bet of allbets) {
+						logText += `${userMention(bet.discord_id)}: H: ${bet.bet_hans} B: ${bet.bet_bob}\n`;
+
+						const [user] = await User.findOrCreate({
+							where: { discord_id: bet.discord_id },
+							defaults: { discord_id: bet.discord_id },
+						});
+
+						user.balance += bet.bet_hans + bet.bet_bob;
+						winnersText += `${userMention(user.discord_id)}(${bet.bet_hans + bet.bet_bob}),`;
+						await user.save();
+						totalPot += bet.bet_hans;
+						totalPot += bet.bet_bob;
+						totalPayout += bet.bet_hans + bet.bet_bob;
+						await bet.destroy();
+					}
+				}
+
+				await logToChannel(
+					`▸ Winner: **${winnerId}**\n▸ Users who bet:\n${logText}`,
+					client.logsChannel,
+					"FF0000",
+					"<:games:1381870887623594035> Live Flower Poker Results"
+				);
+
+				const attachment = new AttachmentBuilder(gif, { name: "fp.gif" });
+				const { embeds, components } = await buildLiveFpEmbed(client, totalPot, totalPayout, winnersText, true);
+				embeds[0].setImage("attachment://fp.gif"); // Reference the attachment by name
+				const channel = await client.channels.fetch(settings.channel_id).catch(() => null);
+				if (channel) {
+					const message = await channel.messages.fetch(settings.message_id).catch(() => null);
+					if (message) {
+						await message.edit({ embeds, components: [], files: [attachment] });
+					}
+					// send a new bets form
+					const { embeds: embeds2, components: components2 } = await buildLiveFpEmbed(client, 0, 0);
+					const msg = await channel.send({ embeds: embeds2, components: components2 });
+					settings.message_id = msg.id;
+					settings.bets_status = true;
+
+					await settings.save();
+				} else {
+					console.error("Channel not found for FP Live settings.");
+				}
+			}
+		});
 
 		// Jackpot
 		cron.schedule("*/1 * * * *", async () => {
@@ -184,6 +317,35 @@ module.exports = {
 
 			if (settings.status && settings.next_draw_date <= new Date()) {
 				await jackpotRollWinners(client);
+			}
+		});
+
+		// Subscriptions
+		cron.schedule("0 0 * * *", async () => {
+			const subs = await Sub.findAll({
+				where: {
+					expiry_date: {
+						[Op.lt]: new Date(),
+					},
+				},
+			});
+
+			if (subs.length > 0) {
+				const settings = await SubSettings.findOne({ where: { id: 0 } });
+				for (const sub of subs) {
+					// remove role
+					const guild = client.guilds.cache.get(process.env.GUILDID);
+					if (guild) {
+						const member = await guild.members.fetch(sub.discord_id).catch(() => null);
+						if (member) {
+							const role = guild.roles.cache.get(settings.role_id);
+							if (role) {
+								await member.roles.remove(role).catch(() => null);
+							}
+						}
+					}
+					await sub.destroy();
+				}
 			}
 		});
 

@@ -12,8 +12,8 @@ module.exports = {
 			},
 		});
 
-		const embed = createWalletEmbed(interaction.user, wallet, interaction.client.serverSettings);
+		const { embed, row } = createWalletEmbed(interaction.user, wallet, interaction.client.serverSettings);
 
-		await interaction.reply({ embeds: [embed] });
+		await interaction.reply({ embeds: [embed], components: [row] });
 	},
 };

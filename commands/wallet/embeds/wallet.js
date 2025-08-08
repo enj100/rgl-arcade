@@ -1,4 +1,13 @@
-const { EmbedBuilder, blockQuote, quote, codeBlock, roleMention } = require("discord.js");
+const {
+	EmbedBuilder,
+	blockQuote,
+	quote,
+	codeBlock,
+	roleMention,
+	ButtonBuilder,
+	ButtonStyle,
+	ActionRowBuilder,
+} = require("discord.js");
 
 /**
  * Creates an embed showing the user's wallet information.
@@ -57,7 +66,16 @@ function createWalletEmbed(user, userObj, settings) {
 	if (settings?.color) {
 		embed.setColor(settings.color);
 	}
-	return embed;
+
+	const mySubButton = new ButtonBuilder()
+		.setCustomId("check_my_sub")
+		.setLabel("Check My Subscription")
+		.setStyle(ButtonStyle.Secondary)
+		.setEmoji("🔔");
+
+	const row = new ActionRowBuilder().addComponents(mySubButton);
+
+	return { embed, row };
 }
 
 module.exports = { createWalletEmbed };

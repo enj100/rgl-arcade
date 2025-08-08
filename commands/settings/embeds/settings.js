@@ -79,6 +79,8 @@ async function buildSettingsEmbed(interaction) {
 				new StringSelectMenuOptionBuilder().setLabel("❓ 1-1000 Game Settings").setValue("guess_game_settings"),
 				new StringSelectMenuOptionBuilder().setLabel("🛒 Shop Settings").setValue("shop_settings"),
 				new StringSelectMenuOptionBuilder().setLabel("🛞 Wheel Settings").setValue("wheel_settings"),
+				new StringSelectMenuOptionBuilder().setLabel("🛍️ Subs Settings").setValue("subs_settings"),
+				new StringSelectMenuOptionBuilder().setLabel("💐 Live Flower Poker").setValue("fp_live_settings"),
 			])
 	);
 

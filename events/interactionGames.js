@@ -48,6 +48,12 @@ const WheelItems = require("../commands/wheel/models/Items");
 const MonthlyRaceBoard = require("../commands/monthly-race/models/MonthlyRaceBoard");
 const MonthlyRaceSettings = require("../commands/monthly-race/models/RaceSettings");
 const { logToChannel } = require("../utils/logger");
+const buildSubsSettingsEmbed = require("../commands/subs/embeds/settings");
+const SubSettings = require("../commands/subs/models/SubSettings");
+const Sub = require("../commands/subs/models/Subs");
+const buildLiveFpSettings = require("../commands/fp-live/embeds/settings");
+const buildLiveFpEmbed = require("../commands/fp-live/embeds/game");
+const FpLiveBets = require("../commands/fp-live/models/Bets");
 
 function shuffleArray(array) {
 	for (let i = array.length - 1; i > 0; i--) {
@@ -61,6 +67,510 @@ module.exports = {
 	name: Events.InteractionCreate,
 	async execute(interaction) {
 		if (interaction.isChatInputCommand()) return;
+		///////////////////////////////////////////////////
+		////////////////// LIVE FP(flower poker) //////////
+		///////////////////////////////////////////////////
+		else if (interaction?.customId === "other_settings" && interaction?.values[0] === "fp_live_settings") {
+			const { embeds, components } = await buildLiveFpSettings(interaction);
+			await interaction.reply({ embeds, components, ephemeral: true });
+		} else if (interaction?.customId === "fp_live_channel_select") {
+			const selectedChannelId = interaction.values[0];
+			const settings = interaction.client.fpLiveSettings;
+			settings.channel_id = selectedChannelId;
+			await settings.save();
+
+			const { embeds, components } = await buildLiveFpSettings(interaction);
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true, // Make the reply visible only to the user who invoked the command
+			});
+		} else if (interaction?.customId === "fp_live_edit_settings") {
+			// create modal for thumbnail, color and payout percent
+			const settings = interaction.client.fpLiveSettings;
+			const modal = new ModalBuilder().setCustomId("fp_live_settings_submit").setTitle("Edit FP Live Settings");
+
+			const payoutPercentInput = new TextInputBuilder()
+				.setCustomId("fp_live_payout_percent")
+				.setLabel("Payout Multiplier")
+				.setStyle(TextInputStyle.Short)
+				.setValue(settings.payout_percent ? settings.payout_percent.toString() : "0")
+				.setRequired(true)
+				.setMaxLength(5);
+
+			const thumbnailInput = new TextInputBuilder()
+				.setCustomId("fp_live_thumbnail")
+				.setLabel("Thumbnail URL")
+				.setStyle(TextInputStyle.Short)
+				.setValue(settings.thumbnail || "")
+				.setRequired(false)
+				.setMaxLength(1000);
+
+			const colorInput = new TextInputBuilder()
+				.setCustomId("fp_live_color")
+				.setLabel("Embed Color (Hex Code)")
+				.setStyle(TextInputStyle.Short)
+				.setValue(settings.color || "#FF0000")
+				.setRequired(false)
+				.setMaxLength(6);
+
+			const row1 = new ActionRowBuilder().addComponents(payoutPercentInput);
+			const row2 = new ActionRowBuilder().addComponents(thumbnailInput);
+			const row3 = new ActionRowBuilder().addComponents(colorInput);
+			modal.addComponents(row1, row2, row3);
+			await interaction.showModal(modal);
+		} else if (interaction?.customId === "fp_live_settings_submit") {
+			const payoutPercent = interaction.fields.getTextInputValue("fp_live_payout_percent");
+			const thumbnail = interaction.fields.getTextInputValue("fp_live_thumbnail");
+			const color = interaction.fields.getTextInputValue("fp_live_color");
+
+			// Validate payout percent
+			const percent = parseFloat(payoutPercent);
+			if (isNaN(percent) || percent < 0 || percent > 100) {
+				return await interaction.reply({
+					content: "❗ Invalid payout multiplier! Please enter a valid number between 0 and 100.",
+					ephemeral: true,
+				});
+			}
+
+			// Update settings
+			const settings = interaction.client.fpLiveSettings;
+			settings.payout_percent = percent;
+			settings.thumbnail = thumbnail || null;
+			settings.color = color || "FF0000"; // Default color if not provided
+			await settings.save();
+
+			// Return to settings page
+			const { embeds, components } = await buildLiveFpSettings(interaction);
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true,
+			});
+		} else if (interaction?.customId === "fp_live_toggle_status") {
+			const settings = interaction.client.fpLiveSettings;
+			settings.status = !settings.status;
+			const channel = await interaction.client.channels.fetch(settings.channel_id).catch(() => null);
+
+			if (settings.status) {
+				const { embeds, components } = await buildLiveFpEmbed(interaction);
+
+				if (channel) {
+					const message = await channel.send({
+						embeds,
+						components,
+					});
+					settings.message_id = message.id;
+					settings.bets_status = true;
+				}
+			} else {
+				settings.bets_status = false;
+				// refund all bets if any is available
+				const embed = new EmbedBuilder().setDescription("❌ Game has ended. All bets have been refunded.").setColor("#FF0000");
+				if (channel) {
+					await channel.send({ embeds: [embed] });
+				}
+				const bets = await FpLiveBets.findAll();
+				for (const bet of bets) {
+					const user = await User.findOne({ where: { discord_id: bet.discord_id } });
+					if (user) {
+						user.balance += bet.bet_hans;
+						user.balance += bet.bet_bob;
+						await user.save();
+					}
+					await bet.destroy();
+				}
+			}
+			await settings.save();
+
+			const { embeds, components } = await buildLiveFpSettings(interaction);
+
+			await interaction.update({
+				embeds,
+				components,
+			});
+		} else if (interaction?.customId === "fp_live_bet_hans") {
+			const settings = interaction.client.fpLiveSettings;
+
+			if (!settings.bets_status) {
+				return await interaction.reply({
+					content: "*❗ Bets are currently closed. Please wait for the next game.*",
+					ephemeral: true,
+				});
+			}
+			// create a modal
+			const modal = new ModalBuilder().setCustomId("fp_live_bet_hans_submit").setTitle("Bet on Hans");
+			const betInput = new TextInputBuilder()
+				.setCustomId("fp_live_bet_hans_amount")
+				.setLabel("Bet Amount (Tokens)")
+				.setStyle(TextInputStyle.Short)
+				.setPlaceholder("Enter the amount you want to bet on Hans")
+				.setRequired(true)
+				.setMaxLength(10);
+			modal.addComponents(new ActionRowBuilder().addComponents(betInput));
+			await interaction.showModal(modal);
+		} else if (interaction?.customId === "fp_live_bet_hans_submit") {
+			const settings = interaction.client.fpLiveSettings;
+			if (!settings.status) {
+				return await interaction.reply({
+					content: "*❗ Flower Poker is currently disabled.*",
+					ephemeral: true,
+				});
+			}
+			if (!settings.bets_status) {
+				return await interaction.reply({
+					content: "*❗ Bets are currently closed. Please wait for the next game.*",
+					ephemeral: true,
+				});
+			}
+			const betAmount = interaction.fields.getTextInputValue("fp_live_bet_hans_amount");
+			// Process the bet amount
+			const amountNum = parseFloat(betAmount);
+			const amount = parseFloat(amountNum.toFixed(2));
+			if (isNaN(amount) || amount <= 1) {
+				return await interaction.reply({
+					content: "❗ Invalid bet amount! Please enter a valid number greater than 1.",
+					ephemeral: true,
+				});
+			}
+			const user = await User.findOne({ where: { discord_id: interaction.user.id } });
+			if (!user || user.balance < amount) {
+				return await interaction.reply({
+					content: "❗ You don't have enough tokens to place this bet.",
+					ephemeral: true,
+				});
+			}
+			// Create a new bet
+			const bet = await FpLiveBets.findOne({
+				where: { discord_id: interaction.user.id },
+			});
+			if (bet) {
+				bet.bet_hans += amount;
+				await bet.save();
+			} else {
+				await FpLiveBets.create({
+					discord_id: interaction.user.id,
+					bet_hans: amount,
+				});
+			}
+			user.balance -= amount;
+			await user.save();
+			await interaction.reply({
+				content: `✅ You have successfully bet **${amount} Tokens** on Hans!`,
+				ephemeral: true,
+			});
+		} else if (interaction?.customId === "fp_live_bet_bob") {
+			const settings = interaction.client.fpLiveSettings;
+
+			if (!settings.bets_status) {
+				return await interaction.reply({
+					content: "*❗ Bets are currently closed. Please wait for the next game.*",
+					ephemeral: true,
+				});
+			}
+			// create a modal
+			const modal = new ModalBuilder().setCustomId("fp_live_bet_bob_submit").setTitle("Bet on Bob");
+			const betInput = new TextInputBuilder()
+				.setCustomId("fp_live_bet_bob_amount")
+				.setLabel("Bet Amount (Tokens)")
+				.setStyle(TextInputStyle.Short)
+				.setPlaceholder("Enter the amount you want to bet on Bob")
+				.setRequired(true)
+				.setMaxLength(10);
+			modal.addComponents(new ActionRowBuilder().addComponents(betInput));
+			await interaction.showModal(modal);
+		} else if (interaction?.customId === "fp_live_bet_bob_submit") {
+			const settings = interaction.client.fpLiveSettings;
+			if (!settings.status) {
+				return await interaction.reply({
+					content: "*❗ Flower Poker is currently disabled.*",
+					ephemeral: true,
+				});
+			}
+			if (!settings.bets_status) {
+				return await interaction.reply({
+					content: "*❗ Bets are currently closed. Please wait for the next game.*",
+					ephemeral: true,
+				});
+			}
+			const betAmount = interaction.fields.getTextInputValue("fp_live_bet_bob_amount");
+			// Process the bet amount
+			const amountNum = parseFloat(betAmount);
+			const amount = parseFloat(amountNum.toFixed(2));
+			if (isNaN(amount) || amount <= 1) {
+				return await interaction.reply({
+					content: "❗ Invalid bet amount! Please enter a valid number greater than 1.",
+					ephemeral: true,
+				});
+			}
+			const user = await User.findOne({ where: { discord_id: interaction.user.id } });
+			if (!user || user.balance < amount) {
+				return await interaction.reply({
+					content: "❗ You don't have enough tokens to place this bet.",
+					ephemeral: true,
+				});
+			}
+			// Create a new bet
+			const bet = await FpLiveBets.findOne({
+				where: { discord_id: interaction.user.id },
+			});
+			if (bet) {
+				bet.bet_bob += amount;
+				await bet.save();
+			} else {
+				await FpLiveBets.create({
+					discord_id: interaction.user.id,
+					bet_bob: amount,
+				});
+			}
+			user.balance -= amount;
+			await user.save();
+			await interaction.reply({
+				content: `✅ You have successfully bet **${amount} Tokens** on Bob!`,
+				ephemeral: true,
+			});
+		}
+
+		///////////////////////////////////////////////////
+		////////////////// SUBS /////////////////////////
+		///////////////////////////////////////////////////
+		else if (interaction?.customId === "other_settings" && interaction?.values[0] === "subs_settings") {
+			const { embeds, components } = await buildSubsSettingsEmbed(interaction);
+			await interaction.reply({ embeds, components, ephemeral: true });
+		} else if (interaction?.customId === "subs_general_settings") {
+			const settings = await SubSettings.findOne({ where: { id: 0 } });
+
+			const modal = new ModalBuilder().setCustomId("subs_general_settings_submit").setTitle("Edit Subscription General Settings");
+
+			const priceTokensInput = new TextInputBuilder()
+				.setCustomId("subs_price_tokens")
+				.setLabel("Price (Tokens)")
+				.setStyle(TextInputStyle.Short)
+				.setValue(settings?.price_tokens?.toString() || "0.0")
+				.setRequired(true)
+				.setMaxLength(10);
+
+			const thumbnailInput = new TextInputBuilder()
+				.setCustomId("subs_thumbnail")
+				.setLabel("Thumbnail URL")
+				.setStyle(TextInputStyle.Short)
+				.setValue(settings?.thumbnail || "")
+				.setRequired(false)
+				.setMaxLength(1000);
+
+			const descriptionInput = new TextInputBuilder()
+				.setCustomId("subs_description")
+				.setLabel("Description")
+				.setStyle(TextInputStyle.Paragraph)
+				.setValue(settings?.description || "")
+				.setRequired(false)
+				.setMaxLength(3000);
+
+			const row1 = new ActionRowBuilder().addComponents(priceTokensInput);
+			const row2 = new ActionRowBuilder().addComponents(thumbnailInput);
+			const row3 = new ActionRowBuilder().addComponents(descriptionInput);
+
+			modal.addComponents(row1, row2, row3);
+			await interaction.showModal(modal);
+		} else if (interaction?.customId === "subs_general_settings_submit") {
+			const priceTokens = interaction.fields.getTextInputValue("subs_price_tokens");
+			const thumbnail = interaction.fields.getTextInputValue("subs_thumbnail");
+			const description = interaction.fields.getTextInputValue("subs_description");
+
+			// Validate price tokens
+			const price = parseFloat(priceTokens);
+			if (isNaN(price) || price < 0) {
+				return await interaction.reply({
+					content: "❗ Invalid price! Please enter a valid number greater than or equal to 0.",
+					ephemeral: true,
+				});
+			}
+
+			// Validate thumbnail URL if provided
+			if (thumbnail && !validate.isURL(thumbnail)) {
+				return await interaction.reply({
+					content: "❗ Invalid thumbnail URL! Please provide a valid URL or leave it empty.",
+					ephemeral: true,
+				});
+			}
+
+			// Update settings
+			const [settings] = await SubSettings.findOrCreate({
+				where: { id: 0 },
+				defaults: { id: 0 },
+			});
+
+			settings.price_tokens = price;
+			settings.thumbnail = thumbnail || null;
+			settings.description = description || null;
+			await settings.save();
+
+			// Return to settings page
+			const { embeds, components } = await buildSubsSettingsEmbed(interaction);
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true,
+			});
+		} else if (interaction?.customId === "subs_channel_select") {
+			const selectedChannelId = interaction.values[0];
+
+			const settings = await SubSettings.findOne({
+				where: { id: 0 },
+			});
+			settings.logs_channel = selectedChannelId;
+			await settings.save();
+
+			const { embeds, components } = await buildSubsSettingsEmbed(interaction);
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true, // Make the reply visible only to the user who invoked the command
+			});
+		} else if (interaction?.customId === "subs_role_select") {
+			const selectedRoleId = interaction.values[0];
+
+			const settings = await SubSettings.findOne({
+				where: { id: 0 },
+			});
+			settings.role_id = selectedRoleId;
+			await settings.save();
+
+			const { embeds, components } = await buildSubsSettingsEmbed(interaction);
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true, // Make the reply visible only to the user who invoked the command
+			});
+		} else if (interaction?.customId === "subs_toggle_status") {
+			const settings = await SubSettings.findOne({
+				where: { id: 0 },
+			});
+			settings.status = !settings.status;
+			await settings.save();
+
+			const { embeds, components } = await buildSubsSettingsEmbed(interaction);
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true, // Make the reply visible only to the user who invoked the command
+			});
+		} else if (interaction?.customId === "check_my_sub") {
+			const settings = await SubSettings.findOne({
+				where: { id: 0 },
+			});
+			if (!settings.status) {
+				return await interaction.reply({
+					content: "❗ Subscriptions are currently disabled.",
+					ephemeral: true,
+				});
+			}
+			const user = await Sub.findOne({
+				where: { discord_id: interaction.user.id },
+			});
+
+			const embed = new EmbedBuilder()
+				.setTitle("⭐ Your Subscription Status")
+				.setColor("FF0000")
+				.setDescription(
+					user
+						? `*You are currently subscribed! Your subscription expires <t:${Math.floor(user.expiry_date.getTime() / 1000)}:R>.*`
+						: `*You are not subscribed. Click a button bellow to buy a monthly subscription.*\n\n${settings.description || ""}`
+				);
+			if (settings.thumbnail) {
+				embed.setThumbnail(settings.thumbnail);
+				embed.setFooter({
+					iconURL: settings.thumbnail,
+					text: settings.brand_name || "RGL-Arcade - Subscriptions",
+				});
+			}
+
+			const buyButton = new ButtonBuilder()
+				.setCustomId("buy_subscription")
+				.setLabel("💳 Buy Subscription")
+				.setStyle(ButtonStyle.Secondary);
+
+			await interaction.reply({
+				embeds: [embed],
+				ephemeral: true, // Make the reply visible only to the user who invoked the command
+				components: [new ActionRowBuilder().addComponents(buyButton)],
+			});
+		} else if (interaction?.customId === "buy_subscription") {
+			const settings = await SubSettings.findOne({
+				where: { id: 0 },
+			});
+			if (!settings.status) {
+				return await interaction.reply({
+					content: "❗ Subscriptions are currently disabled.",
+					ephemeral: true,
+				});
+			}
+
+			const userSub = await Sub.findOne({
+				where: { discord_id: interaction.user.id },
+			});
+
+			const [userWallet] = await User.findOrCreate({
+				where: { discord_id: interaction.user.id },
+				defaults: { discord_id: interaction.user.id },
+			});
+
+			if (userWallet.balance < settings.price_tokens) {
+				return await interaction.reply({
+					content: `*❗ You don't have enough RGL-Tokens to buy a subscription. You need at least ${settings.price_tokens.toFixed(
+						2
+					)} Tokens.*`,
+					ephemeral: true,
+				});
+			}
+
+			// add one month to the subscription
+			const expiryDate = userSub
+				? new Date(userSub.expiry_date.getTime() + 30 * 24 * 60 * 60 * 1000) // add one month
+				: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // create new subscription
+
+			await Sub.upsert({
+				discord_id: interaction.user.id,
+				expiry_date: expiryDate,
+				created_at: new Date(),
+				updated_at: new Date(),
+			});
+			userWallet.balance -= settings.price_tokens;
+			await userWallet.save();
+
+			// attach role to user
+			if (settings.role_id) {
+				const role = interaction.guild.roles.cache.get(settings.role_id);
+				if (role) {
+					const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+					if (member) {
+						await member.roles.add(role).catch((err) => {
+							console.error(`Failed to add role ${role.name} to user ${interaction.user.tag}:`, err);
+						});
+					}
+				}
+			}
+
+			if (settings.logs_channel) {
+				const logsChannel = await interaction.client.channels.fetch(settings.logs_channel).catch(() => null);
+				if (logsChannel) {
+					const embed = new EmbedBuilder()
+						.setTitle("⭐ New Subscriber")
+						.setColor("FF0000")
+						.setDescription(`▸ **${interaction.user}** just purchased a subscription! Thank you for your support! ❤️`)
+						.setFooter({ text: "RGL-Arcade - Subscriptions" })
+						.setTimestamp();
+
+					await logsChannel.send({ embeds: [embed] });
+				}
+			}
+
+			await interaction.reply({
+				content: `*✅ Successfully purchased a subscription! Thank you! ❤️*`,
+				ephemeral: true,
+			});
+		}
+
 		///////////////////////////////////////////////////
 		////////////////// WHEEL /////////////////////////
 		///////////////////////////////////////////////////
@@ -1380,7 +1890,7 @@ module.exports = {
 
 			const payoutPercent = new TextInputBuilder()
 				.setCustomId("jackpot_payout_percent")
-				.setLabel("Payout Percent (0-100)")
+				.setLabel("Payout Percent")
 				.setStyle(TextInputStyle.Short)
 				.setValue(settings.payout_percent?.toString() || "0");
 

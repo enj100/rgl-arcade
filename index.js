@@ -39,6 +39,7 @@ const index = (async function () {
 	client.shopSettings = null;
 	client.wheelSettings = null;
 	client.wheelItems = null;
+	client.fpLiveSettings = null;
 	const foldersPath = path.join(__dirname, "commands");
 	const commandFolders = fs.readdirSync(foldersPath);
 
