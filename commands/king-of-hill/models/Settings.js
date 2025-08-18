@@ -1,7 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../../../database/database");
 
-const MonthlyRaceSettings = sequelize.define("monthly_race_settings", {
+const KothSettings = sequelize.define("koth_settings", {
     id: {
         type: DataTypes.INTEGER,
         allowNull: true,
@@ -9,12 +9,12 @@ const MonthlyRaceSettings = sequelize.define("monthly_race_settings", {
         defaultValue: 0,
     },
     channel: {
-        type: DataTypes.STRING(64),
+        type: DataTypes.STRING,
         allowNull: true,
         defaultValue: null,
     },
     message: {
-        type: DataTypes.STRING(64),
+        type: DataTypes.STRING,
         allowNull: true,
         defaultValue: null,
     },
@@ -23,11 +23,26 @@ const MonthlyRaceSettings = sequelize.define("monthly_race_settings", {
         allowNull: true,
         defaultValue: 1,
     },
+    auto_run: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true,
+        defaultValue: false,
+    },
     status: {
         type: DataTypes.BOOLEAN,
         allowNull: true,
         defaultValue: false,
     },
+    thumbnail: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null,
+    },
+    color: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: "FF0000",
+    },
 });
 
-module.exports = MonthlyRaceSettings;
+module.exports = KothSettings;
