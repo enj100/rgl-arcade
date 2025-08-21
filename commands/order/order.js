@@ -65,15 +65,16 @@ module.exports = {
 		if (!eligibleRank) {
 			wallet.balance += amount;
 		} else {
-			wallet.balance += amount * (1 + eligibleRank.rakeback / 100);
+			wallet.balance += amount;
 			bonus = Math.round(amount * (eligibleRank.rakeback / 100));
+			wallet.cashback += bonus;
 		}
 
 		await wallet.save();
 
 		let replyMsg = `<:red_check:1381871266855649360> Successfully added **${amount.toFixed(2)} (+${bonus.toFixed(
 			2
-		)}) Tokens** to ${user}'s wallet balance.`;
+		)} Cashback) Tokens** to ${user}'s wallet balance.`;
 		if (rankChanged) {
 			replyMsg += `\n<:arcade:1387956639578984589> ${user} has been promoted to ${roleMention(eligibleRank.role_id)}!`;
 		}

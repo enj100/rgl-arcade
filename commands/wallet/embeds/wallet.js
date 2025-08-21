@@ -56,6 +56,11 @@ function createWalletEmbed(user, userObj, settings) {
 				inline: true,
 			},
 			{
+				name: `${process.env.CASHBACK_EMOJI ? process.env.CASHBACK_EMOJI + " " : ""}Cashback`,
+				value: `${codeBlock(userObj.cashback.toFixed(2))}`,
+				inline: true,
+			},
+			{
 				name: `${process.env.RANK_EMOJI ? process.env.RANK_EMOJI + " " : ""}Rank`,
 				value: `${userObj.rank ? roleMention(userObj.rank) : "Unranked"}`,
 				inline: false,
@@ -73,7 +78,19 @@ function createWalletEmbed(user, userObj, settings) {
 		.setStyle(ButtonStyle.Secondary)
 		.setEmoji("🔔");
 
-	const row = new ActionRowBuilder().addComponents(mySubButton);
+	const claimCashbackButton = new ButtonBuilder()
+		.setCustomId(`claim_cashback-${user.id}`)
+		.setLabel("Claim Cashback")
+		.setStyle(ButtonStyle.Success)
+		.setEmoji("💰");
+
+	const swapToOsrsButton = new ButtonBuilder()
+		.setCustomId(`swap_to_osrs-${user.id}`)
+		.setLabel("Swap to OSRS")
+		.setStyle(ButtonStyle.Primary)
+		.setEmoji("💵");
+
+	const row = new ActionRowBuilder().addComponents(mySubButton, claimCashbackButton, swapToOsrsButton);
 
 	return { embed, row };
 }

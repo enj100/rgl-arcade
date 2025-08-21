@@ -47,6 +47,11 @@ const User = sequelize.define("user", {
 		allowNull: true,
 		defaultValue: 0.0,
 	},
+	cashback: {
+		type: DataTypes.FLOAT,
+		allowNull: true,
+		defaultValue: 0.0,
+	},
 });
 
 module.exports = User;
