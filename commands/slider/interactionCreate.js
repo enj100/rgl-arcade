@@ -13,7 +13,7 @@ const {
 const { createSliderGIF } = require("./embeds/generateGif");
 const User = require("../wallet/models/User");
 const { processGameResult } = require("../../utils/winners");
-const KothSettings = require("../king-of-hill/models/settings");
+const KothSettings = require("../king-of-hill/models/Settings");
 const KothLeaderboard = require("../king-of-hill/models/Leaderboard");
 
 module.exports = {

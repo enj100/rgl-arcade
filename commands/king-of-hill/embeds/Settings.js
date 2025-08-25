@@ -8,7 +8,7 @@ const {
     channelMention,
     StringSelectMenuBuilder,
 } = require("discord.js");
-const KothSettings = require("../models/settings");
+const KothSettings = require("../models/Settings");
 const KothPrize = require("../models/Prize");
 
 async function kothSettingsEmbed(interaction) {
