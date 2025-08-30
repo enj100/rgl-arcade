@@ -18,14 +18,14 @@ async function buildLiveFpEmbed(interaction, lastTotalPot = 0, lastTotalPayout =
 
 	const settings = client.fpLiveSettings;
 
-	// add 5 min to the current time
+	// add 1 min to the current time
 	const currentTime = new Date();
-	currentTime.setMinutes(currentTime.getMinutes() + 5);
+	currentTime.setMinutes(currentTime.getMinutes() + 1);
 
 	// convert to reverse time dicord
 	const relative = time(currentTime, TimestampStyles.RelativeTime);
 
-	const genericText = `\n*ℹ️ Click a button bellow to bet on Bob or Hans! Games are automatically launched every 5 minutes.*\n`;
+	const genericText = `\n*ℹ️ Click a button bellow to bet on Bob or Hans! Games are automatically launched every 1 minute.*\n`;
 	const payoutText = `**▸ Payout Multiplier:** ${settings.payout_percent ? `x${settings.payout_percent}` : "Not Set"}\n`;
 	const nextGameTime = `**▸ Next Game Time:** ${relative}\n`;
 	const totalPot = `**▸ Total Pot:** ${lastTotalPot ? `${lastTotalPot} Tokens` : "0 Tokens"}\n`;

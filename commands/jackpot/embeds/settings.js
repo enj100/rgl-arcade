@@ -22,11 +22,16 @@ async function buildJackpotSettingsEmbed(interaction) {
 	const description = `▸ **Description:**\n ${settings.description || "Not Set."}\n`;
 	const jackpotChannelText = `▸ **Channel:** ${settings.channel ? `${channelMention(settings.channel)}` : "Not Set."}\n`;
 	const payoutPercent = `▸ **Payout Percent:** ${settings.payout_percent > 0 ? `${settings.payout_percent}%` : "Not Set."}\n`;
+	const announceChannelText = `▸ **Announcements Channel:** ${
+		settings.announce_channel ? `${channelMention(settings.announce_channel)}` : "Not Set."
+	}\n`;
 
 	const embed = new EmbedBuilder()
 		.setTitle("Jackpot Settings")
 		.setColor(settings.color)
-		.setDescription(`${status}${jackpotChannelText}${payoutPercent}${ticketPrice}${availableTickets}${description}`);
+		.setDescription(
+			`${status}${jackpotChannelText}${announceChannelText}${payoutPercent}${ticketPrice}${availableTickets}${description}`
+		);
 
 	if (settings.thumbnail && settings.thumbnail.length > 0) {
 		embed.setThumbnail(settings.thumbnail);
@@ -56,11 +61,17 @@ async function buildJackpotSettingsEmbed(interaction) {
 		.setPlaceholder("ℹ️ Select a channel for jackpot")
 		.setChannelTypes(ChannelType.GuildText);
 
+	const announceChannel = new ChannelSelectMenuBuilder()
+		.setCustomId("jackpot_announce_channel_select")
+		.setPlaceholder("ℹ️ Select a channel for jackpot announcements")
+		.setChannelTypes(ChannelType.GuildText);
+
 	const row1 = new ActionRowBuilder().addComponents(editButton, editTicketsButton, toggleButton);
 	const row2 = new ActionRowBuilder().addComponents(jackpotChannel);
+	const row3 = new ActionRowBuilder().addComponents(announceChannel);
 	return {
 		embeds: [embed],
-		components: [row1, row2],
+		components: [row1, row2, row3],
 	};
 }
 

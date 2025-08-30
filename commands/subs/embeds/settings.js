@@ -23,11 +23,12 @@ async function buildSubsSettingsEmbed(interaction) {
 	}\n`;
 	const description = `▸ **Description:** ${settings.description || "Not Set."}\n`;
 	const subsCountText = `▸ **Active Subscriptions:** ${subsCount}\n`;
+	const cashbackPercentage = `▸ **Cashback:** ${settings.cashback_percentage}%\n`;
 
 	const embed = new EmbedBuilder()
 		.setTitle("Subscription Settings")
 		.setColor(settings.status ? 0x00ff00 : 0xff0000)
-		.setDescription(`${priceTokens}${status}${role}${logsChannel}\n${subsCountText}\n${description}`);
+		.setDescription(`${priceTokens}${cashbackPercentage}${status}${role}${logsChannel}\n${subsCountText}\n${description}`);
 
 	if (settings.thumbnail && settings.thumbnail.length > 0) {
 		embed.setThumbnail(settings.thumbnail);

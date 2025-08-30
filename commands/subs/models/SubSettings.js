@@ -38,6 +38,11 @@ const SubSettings = sequelize.define("subscriptions_settings", {
 		allowNull: true,
 		defaultValue: null,
 	},
+	cashback_percentage: {
+		type: DataTypes.FLOAT,
+		allowNull: true,
+		defaultValue: 1.5,
+	},
 });
 
 module.exports = SubSettings;

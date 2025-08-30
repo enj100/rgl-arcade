@@ -58,6 +58,11 @@ const JackpotSettings = sequelize.define("jackpot_setings", {
 		allowNull: true,
 		defaultValue: 0,
 	},
+	announce_channel: {
+		type: DataTypes.STRING(64),
+		allowNull: true,
+		defaultValue: null,
+	},
 });
 
 module.exports = JackpotSettings;

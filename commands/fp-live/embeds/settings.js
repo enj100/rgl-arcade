@@ -16,8 +16,9 @@ async function buildLiveFpSettings(interaction) {
 	const status = `**▸ Status:** ${settings.status ? "Enabled" : "Disabled"}\n`;
 	const channel = `**▸ Channel:** ${settings.channel_id ? channelMention(settings.channel_id) : "Not Set"}\n`;
 	const payoutPercent = `**▸ Payout Multiplier:** ${settings.payout_percent ? `x${settings.payout_percent}` : "Not Set"}\n`;
+	const profit = `**▸ Profit:** ${settings.profit ? `${settings.profit.toFixed(2)} Tokens` : "0.00 Tokens"}\n`;
 
-	const embed = new EmbedBuilder().setTitle("🎰 FP Live Settings").setDescription(`${status}${channel}${payoutPercent}`);
+	const embed = new EmbedBuilder().setTitle("🎰 FP Live Settings").setDescription(`${status}${channel}${payoutPercent}${profit}`);
 
 	if (settings?.thumbnail) {
 		embed.setThumbnail(settings.thumbnail);
@@ -36,6 +37,11 @@ async function buildLiveFpSettings(interaction) {
 		.setLabel("⚙️ Edit Settings")
 		.setStyle(ButtonStyle.Secondary);
 
+	const resetProfitButton = new ButtonBuilder()
+		.setCustomId("fp_live_reset_profit")
+		.setLabel("🔄 Reset Profit")
+		.setStyle(ButtonStyle.Danger);
+
 	const channelSelect = new ChannelSelectMenuBuilder()
 		.setCustomId("fp_live_channel_select")
 		.setPlaceholder("ℹ️ Choose a Channel for FP Live")
@@ -43,7 +49,7 @@ async function buildLiveFpSettings(interaction) {
 		.setMinValues(1)
 		.setMaxValues(1);
 
-	const row1 = new ActionRowBuilder().addComponents(toggleStatusButton, editSettingsButton);
+	const row1 = new ActionRowBuilder().addComponents(toggleStatusButton, editSettingsButton, resetProfitButton);
 	const row2 = new ActionRowBuilder().addComponents(channelSelect);
 
 	return {

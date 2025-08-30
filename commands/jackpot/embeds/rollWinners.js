@@ -107,6 +107,11 @@ async function jackpotRollWinners(client) {
 				.setColor("00FF00")
 				.setFooter({ text: "RGL - Jackpot" });
 			channel.send({ embeds: [embedWinner] });
+			// announcements channel
+			const announceChannel = await client.channels.fetch(settings.announce_channel).catch(() => null);
+			if (announceChannel) {
+				announceChannel.send({ embeds: [embedWinner] });
+			}
 			const [user] = await User.findOrCreate({
 				where: { discord_id: winner.discord_id },
 				defaults: { discord_id: winner.discord_id },
@@ -115,12 +120,12 @@ async function jackpotRollWinners(client) {
 			await user.save();
 			await JackpotTickets.destroy({ where: {} });
 
-			settings.next_draw_date = new Date(Date.now() + 24 * 60 * 60 * 1000); // next draw in 24 hours
+			settings.next_draw_date = new Date(Date.now() + 4 * 60 * 60 * 1000); // next draw in 24 hours
 
 			const embed = new EmbedBuilder()
-				.setTitle(`${process.env.JACKPOT_EMOJI || "🍯"} RGL-Arcade Jackpot!`)
+				.setTitle(`${process.env.JACKPOT_EMOJI || "🍯"} Token Jackpot! ${process.env.JACKPOT_EMOJI || "🍯"}`)
 				.setDescription(
-					`${settings.description || "Join the jackpot!"}\n\n⌛ **Next draw:** ${
+					`${settings.description || "Join the jackpot!"}\n\n<:trophy:1387963764397179040> **Next draw:** ${
 						settings.next_draw_date ? time(settings.next_draw_date) : "TBA"
 					}`
 				)

@@ -1,6 +1,8 @@
 const { SlashCommandBuilder, roleMention } = require("discord.js");
 const User = require("../wallet/models/User");
 const { logToChannel } = require("../../utils/logger");
+const Sub = require("../subs/models/Subs");
+const SubSettings = require("../subs/models/SubSettings");
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -26,6 +28,15 @@ module.exports = {
 				discord_id: user.id,
 			},
 		});
+
+		const sub = await Sub.findOne({
+			where: { discord_id: user.id },
+			defaults: {
+				discord_id: user.id,
+			},
+		});
+
+		const subSettings = await SubSettings.findOne({ where: { id: 0 } });
 
 		wallet.total_bought += amount;
 		// apply higher rank if they bought enough already for higher one
@@ -66,13 +77,21 @@ module.exports = {
 			wallet.balance += amount;
 		} else {
 			wallet.balance += amount;
-			bonus = Math.round(amount * (eligibleRank.rakeback / 100));
-			wallet.cashback += bonus;
+			bonus = (amount * (eligibleRank.rakeback / 100)).toFixed(2);
+			wallet.cashback += parseFloat(bonus);
+		}
+
+		let subCashback = 0;
+		// calculate sub cashback extra
+		if (sub && subSettings && subSettings.cashback_percentage) {
+			subCashback = (amount * (subSettings.cashback_percentage / 100)).toFixed(2);
+			wallet.cashback += parseFloat(subCashback);
 		}
 
 		await wallet.save();
 
-		let replyMsg = `<:red_check:1381871266855649360> Successfully added **${amount.toFixed(2)} (+${bonus.toFixed(
+		let totalCashback = parseFloat(bonus) + parseFloat(subCashback);
+		let replyMsg = `<:red_check:1381871266855649360> Successfully added **${amount.toFixed(2)} (+${totalCashback.toFixed(
 			2
 		)} Cashback) Tokens** to ${user}'s wallet balance.`;
 		if (rankChanged) {
