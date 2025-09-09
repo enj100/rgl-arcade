@@ -23,10 +23,14 @@ async function buildSettingsEmbed(interaction) {
 		shopSettings.tickets_logs_channel ? channelMention(shopSettings.tickets_logs_channel) : "Not Set."
 	}\n`;
 
+	const transfersLogsChannel = `▸ **Transfers Logs Channel:** ${
+		settings.transfers_logs_channel ? channelMention(settings.transfers_logs_channel) : "Not Set."
+	}\n`;
+
 	const embed = new EmbedBuilder()
 		.setTitle("Server Settings")
 		.setColor(settings.color)
-		.setDescription(`${brandName}${logsChannel}${gamesLogsChannel}${ticketsLogsChannel}`);
+		.setDescription(`${brandName}${logsChannel}${gamesLogsChannel}${ticketsLogsChannel}${transfersLogsChannel}`);
 
 	if (settings.thumbnail && settings.thumbnail.length > 0) {
 		embed.setThumbnail(settings.thumbnail);
@@ -39,7 +43,12 @@ async function buildSettingsEmbed(interaction) {
 		.setLabel("Edit Server Settings")
 		.setStyle(ButtonStyle.Primary);
 
-	const row1 = new ActionRowBuilder().addComponents(editButton);
+	const editOtherSettingsButton = new ButtonBuilder()
+		.setCustomId("server_other_settings_button")
+		.setLabel("⚙️ Other Settings")
+		.setStyle(ButtonStyle.Secondary);
+
+	const row1 = new ActionRowBuilder().addComponents(editButton, editOtherSettingsButton);
 	const row2 = new ActionRowBuilder().addComponents(
 		new ChannelSelectMenuBuilder()
 			.setCustomId("settings_logs_channel_select")

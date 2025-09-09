@@ -98,10 +98,16 @@ module.exports = {
 			replyMsg += `\n<:arcade:1387956639578984589> ${user} has been promoted to ${roleMention(eligibleRank.role_id)}!`;
 		}
 
-		await logToChannel(
-			`Order created by **${interaction.user}** and added **${amount.toFixed(2)} RGL-Tokens** to **${user}**'s wallet`,
-			interaction.client.logsChannel
-		).catch((e) => null);
+		const settings = interaction.client.serverSettings;
+		if (settings.transfers_logs_channel) {
+			const channel = await interaction.client.channels.fetch(settings.transfers_logs_channel).catch(() => null);
+			if (channel) {
+				await logToChannel(
+					`Order created by **${interaction.user}** and added **${amount.toFixed(2)} RGL-Tokens** to **${user}**'s wallet`,
+					channel
+				).catch((e) => null);
+			}
+		}
 
 		await interaction.reply({
 			content: replyMsg,

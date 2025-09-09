@@ -7,7 +7,34 @@ module.exports = {
 	name: Events.InteractionCreate,
 	async execute(interaction) {
 		if (interaction.isChatInputCommand()) return;
-		else if (interaction?.customId === "settings_tickets_logs_channel_select") {
+		else if (interaction?.customId === "server_other_settings_button") {
+			const settings = interaction.client.serverSettings;
+
+			const modal = new ModalBuilder().setCustomId("server_other_settings_button_submit").setTitle("Edit Other Settings");
+
+			const transfersLogsChannel = new TextInputBuilder()
+				.setCustomId("settings_transfers_logs_channel")
+				.setLabel("Transfers Logs Channel")
+				.setStyle(TextInputStyle.Short)
+				.setRequired(false)
+				.setValue(settings?.transfers_logs_channel || "");
+
+			modal.addComponents(new ActionRowBuilder().addComponents(transfersLogsChannel));
+			await interaction.showModal(modal);
+		} else if (interaction?.customId === "server_other_settings_button_submit") {
+			const settings = interaction.client.serverSettings;
+			const transfersLogsChannel = interaction.fields.getTextInputValue("settings_transfers_logs_channel");
+
+			settings.transfers_logs_channel = transfersLogsChannel || null;
+			await settings.save();
+
+			const { embeds, components } = await buildSettingsEmbed(interaction);
+			await interaction.update({
+				embeds,
+				components,
+				ephemeral: true, // Make the reply visible only to the user who invoked the command
+			});
+		} else if (interaction?.customId === "settings_tickets_logs_channel_select") {
 			const selectedChannelId = interaction.values[0];
 
 			const settings = await ShopSettings.findOne({

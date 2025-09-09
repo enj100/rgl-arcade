@@ -33,6 +33,11 @@ const Settings = sequelize.define("settings", {
 		allowNull: true,
 		defaultValue: null,
 	},
+	transfers_logs_channel: {
+		type: DataTypes.STRING(50),
+		allowNull: true,
+		defaultValue: null,
+	},
 });
 
 module.exports = Settings;

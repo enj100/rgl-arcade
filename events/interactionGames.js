@@ -66,6 +66,9 @@ const buildGoldSwapSettings = require("../commands/swap-gold/embeds/settings");
 const GoldSwapSettings = require("../commands/swap-gold/models/Settings");
 const Rate = require("../commands/swap-gold/models/Rate");
 const KothSettings = require("../commands/king-of-hill/models/Settings");
+const { buildHouseGamesProfitEmbed } = require("../commands/house_games_check/embeds/profitEmbed");
+const GoodiebagSettings = require("../commands/goodie-bag/models/Settings");
+const FpLiveSettings = require("../commands/fp-live/models/Settings");
 
 function shuffleArray(array) {
 	for (let i = array.length - 1; i > 0; i--) {
@@ -79,6 +82,31 @@ module.exports = {
 	name: Events.InteractionCreate,
 	async execute(interaction) {
 		if (interaction.isChatInputCommand()) return;
+		///////////////////////////////////////////////////
+		////////////////// House Games Checker ////////////
+		///////////////////////////////////////////////////
+		else if (interaction?.customId === "house_games_reset") {
+			const game = interaction.values[0];
+			if (!game) return;
+			if (game === "gb") {
+				const goodieBagSettings = await GoodiebagSettings.findOne({ where: { id: 0 } });
+				goodieBagSettings.users_paid = 0;
+				goodieBagSettings.payout = 0;
+				await goodieBagSettings.save();
+			} else if (game === "wheel") {
+				const wheelSettings = await WheelSettings.findOne({ where: { id: 0 } });
+				wheelSettings.users_paid = 0;
+				wheelSettings.payout = 0;
+				await wheelSettings.save();
+			} else if (game === "live_fp") {
+				const liveFpSettings = await FpLiveSettings.findOne({ where: { id: 0 } });
+				liveFpSettings.profit = 0;
+				await liveFpSettings.save();
+			}
+			const { embeds, components } = await buildHouseGamesProfitEmbed();
+			await interaction.update({ embeds, components, ephemeral: true }); // Make the reply visible only to the user who invoked the command
+		}
+
 		///////////////////////////////////////////////////
 		////////////////// Gold Swap //////////////////////
 		///////////////////////////////////////////////////
@@ -1729,7 +1757,7 @@ module.exports = {
 				new ButtonBuilder().setCustomId("wheel_spin_again").setLabel("Spin Again").setStyle(ButtonStyle.Success).setEmoji("🔄")
 			);
 
-			const replyPayload = { embeds: [embed], components: [checkItems] };
+			const replyPayload = { content: `${interaction.user}`, embeds: [embed], components: [checkItems] };
 			if (imagePath) {
 				const attachment = new AttachmentBuilder(imagePath);
 				embed.setImage(`attachment://${path.basename(imagePath)}`);
