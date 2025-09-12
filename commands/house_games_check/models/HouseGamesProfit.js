@@ -13,6 +13,11 @@ const HouseGamesProfit = sequelize.define("house_games_profit", {
 		allowNull: true,
 		defaultValue: 0.0,
 	},
+	dice_duel: {
+		type: DataTypes.FLOAT,
+		allowNull: true,
+		defaultValue: 0.0,
+	},
 });
 
 module.exports = HouseGamesProfit;
