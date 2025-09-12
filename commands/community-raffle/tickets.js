@@ -26,22 +26,26 @@ module.exports = {
 				.setRequired(true)
 		)
 		.addUserOption((option) => option.setName("user").setDescription("Select an user").setRequired(true))
-		.addNumberOption((option) => option.setName("amount").setDescription("Amount of tickets").setRequired(true).setMinValue(1)),
+		.addNumberOption((option) => option.setName("amount").setDescription("Amount of tickets").setRequired(true).setMinValue(1))
+		.addNumberOption((option) => option.setName("raffle_id").setDescription("Raffle ID").setRequired(true).setMinValue(0)),
 	async execute(interaction) {
 		const action = interaction.options.getString("action");
 		const user = interaction.options.getUser("user");
 		const amount = interaction.options.getNumber("amount");
+		const raffleId = interaction.options.getNumber("raffle_id");
 
-		const settings = await CommunityRaffleSettings.findOne({ where: { id: 0 } });
+		const raffleIdText = `(RAFFLE ID: ${raffleId})`;
+
+		const settings = await CommunityRaffleSettings.findOne({ where: { id: raffleId } });
 		if (!settings) {
 			return await interaction.reply({
-				content: "*❗ Community Raffle settings not found!*",
+				content: `*❗ Community Raffle with ID (${raffleId}) settings not found!*`,
 				ephemeral: true,
 			});
 		}
 		if (!settings.status) {
 			return await interaction.reply({
-				content: "*❗ Community Raffle is currently inactive!*",
+				content: `*❗ Community Raffle with ID (${raffleId}) is currently inactive!*`,
 				ephemeral: true,
 			});
 		}
@@ -56,7 +60,7 @@ module.exports = {
 		}
 
 		if (action === "add") {
-			let ticketsCount = await CommunityRaffleTickets.count();
+			let ticketsCount = await CommunityRaffleTickets.count({ where: { raffle_id: raffleId } });
 
 			if (ticketsCount + amount > settings.tickets_amount) {
 				return await interaction.reply({
@@ -65,22 +69,35 @@ module.exports = {
 				});
 			}
 
+			const lastTicket = await CommunityRaffleTickets.findOne({
+				where: { raffle_id: raffleId },
+				order: [["ticket_number", "DESC"]],
+			});
+
+			let nextTicketNumber = lastTicket ? lastTicket.ticket_number + 1 : 1;
+
 			const ticketNumbers = [];
+
 			for (let index = 0; index < amount; index++) {
-				const ticket = await CommunityRaffleTickets.create({ discord_id: user.id });
+				const ticket = await CommunityRaffleTickets.create({
+					discord_id: user.id,
+					raffle_id: raffleId,
+					ticket_number: nextTicketNumber,
+				});
 				ticketNumbers.push(ticket.ticket_number);
+				nextTicketNumber++;
 			}
 
 			// Add tickets logic
 			const embed = new EmbedBuilder()
 				.setDescription(`:tickets: ${user} just bought **${amount} ticket(s)!**\n▸ Ticket Numbers: ${ticketNumbers.join(", ")}`)
 				.setColor("ffffff")
-				.setFooter({ text: `${ticketsCount + amount}/${settings.tickets_amount} ticket(s)` });
+				.setFooter({ text: `${ticketsCount + amount}/${settings.tickets_amount} ticket(s) - ${raffleIdText}` });
 
 			await channel.send({
 				embeds: [embed],
 			});
-			await interaction.reply({ content: `✅ Added ${amount} tickets for ${user}`, ephemeral: true });
+			await interaction.reply({ content: `✅ Added ${amount} tickets for ${user} - ${raffleIdText}`, ephemeral: true });
 
 			// add a role to user
 			const member = await interaction.guild.members.fetch(user.id).catch(() => null);
@@ -91,8 +108,8 @@ module.exports = {
 			// check if tickets are sold and run the raffle!
 			if (ticketsCount + amount === settings.tickets_amount) {
 				settings.status = false;
-				const allPrizes = await CommunityRafflePrizes.findAll({ order: [["place", "ASC"]] });
-				const allTickets = await CommunityRaffleTickets.findAll();
+				const allPrizes = await CommunityRafflePrizes.findAll({ where: { raffle_id: raffleId }, order: [["place", "ASC"]] });
+				const allTickets = await CommunityRaffleTickets.findAll({ where: { raffle_id: raffleId } });
 
 				// start the raffle
 				for (let i = allTickets.length - 1; i > 0; i--) {
@@ -129,22 +146,28 @@ module.exports = {
 				const img = await createCommunityRaffleGif(winnersInfo, interaction);
 				const attachment = new AttachmentBuilder(img, { name: "winners.gif" });
 
-				const embed = new EmbedBuilder().setTitle(`🏆 Raffle Winners 🏆`).setImage("attachment://winners.gif").setColor("ffffff");
+				const embed = new EmbedBuilder()
+					.setTitle(`🏆 Raffle Winners 🏆`)
+					.setImage("attachment://winners.gif")
+					.setColor("ffffff")
+					.setFooter({ text: `🎉 Community Raffle! - ${raffleIdText}` });
 				const embedWinners = new EmbedBuilder()
 					.setTitle(`🏆 Raffle Winners 🏆`)
 					.setDescription(`${winnersText.length > 0 ? spoiler(winnersText) : "-"}`)
-					.setColor("ffffff");
+					.setColor("ffffff")
+					.setFooter({ text: `🎉 Community Raffle! - ${raffleIdText}` });
 				await channel.send({ embeds: [embed, embedWinners], files: [attachment] });
 
 				// set raffle to inactive and destroy all tickets
-				await CommunityRaffleTickets.destroy({ where: {}, truncate: true });
+				await CommunityRaffleTickets.destroy({ where: { raffle_id: raffleId } });
 				settings.status = false;
 				await settings.save();
 
 				const spamEmbed = new EmbedBuilder()
-					.setDescription(`🎉 **Community Raffle has ended!** Check the winners: ${channel}`)
+					.setTitle("🎟️ Community Raffle 🎟️")
+					.setDescription(`🎉 **${settings.name} has ended!** Check the winners: ${channel}`)
 					.setColor("FF0000")
-					.setFooter({ text: `🏆 Winners announced!` })
+					.setFooter({ text: `🏆 Winners announced! - ${raffleIdText}` })
 					.setTimestamp();
 
 				if (spamChannel) {
@@ -155,7 +178,8 @@ module.exports = {
 			}
 		} else if (action === "remove") {
 			// Remove tickets logic
-			const userTickets = await CommunityRaffleTickets.findAll({ where: { discord_id: user.id } });
+			console.log(user.id, raffleId);
+			const userTickets = await CommunityRaffleTickets.findAll({ where: { discord_id: user.id, raffle_id: raffleId } });
 			if (userTickets.length < amount) {
 				return await interaction.reply({
 					content: `*❗ ${user} has only ${userTickets.length} ticket(s)!*`,
@@ -170,17 +194,17 @@ module.exports = {
 				}
 			}
 
-			const allTickets = await CommunityRaffleTickets.count();
+			let ticketsCount = await CommunityRaffleTickets.count({ where: { raffle_id: raffleId } });
 
 			const embed = new EmbedBuilder()
 				.setDescription(`🎟️ Removed **${amount}** ticket(s) from ${user}!\n▸ Ticket Numbers: ${ticketNumbers.join(", ")}`)
 				.setColor("ff0000")
-				.setFooter({ text: `${allTickets}/${settings.tickets_amount} tickets` });
+				.setFooter({ text: `${ticketsCount}/${settings.tickets_amount} tickets - ${raffleIdText}` });
 
 			await channel.send({
 				embeds: [embed],
 			});
-			await interaction.reply({ content: `✅ Removed ${amount} tickets from ${user}`, ephemeral: true });
+			await interaction.reply({ content: `✅ Removed ${amount} tickets from ${user} - ${raffleIdText}`, ephemeral: true });
 		}
 	},
 };

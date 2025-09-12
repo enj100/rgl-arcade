@@ -375,8 +375,25 @@ module.exports = {
 					// announce a winner
 					settings.bets_status = false;
 
-					const { winnerId, gif } = await createFpLiveGif(client);
 					const allbets = await FpLiveBets.findAll();
+
+					if (allbets.length === 0) {
+						const channel = await client.channels.fetch(settings.channel_id).catch(() => null);
+						if (channel) {
+							const message = await channel.messages.fetch(settings.message_id).catch(() => null);
+							if (message) {
+								const { embeds: embeds2, components: components2 } = await buildLiveFpEmbed(client, 0, 0);
+
+								await message.edit({ embeds: embeds2, components: components2 });
+							}
+							settings.bets_status = true;
+							await settings.save();
+						}
+						return;
+					}
+
+					const { winnerId, gif } = await createFpLiveGif(client);
+
 					const payoutMultiplier = settings.payout_percent;
 					let totalPot = 0;
 					let totalPayout = 0;

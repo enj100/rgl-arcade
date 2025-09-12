@@ -1,103 +1,105 @@
 const {
-    EmbedBuilder,
-    ButtonStyle,
-    ButtonBuilder,
-    ActionRowBuilder,
-    channelMention,
-    ChannelSelectMenuBuilder,
-    ChannelType,
-    StringSelectMenuBuilder,
-    StringSelectMenuOptionBuilder,
-    roleMention,
-    RoleSelectMenuBuilder,
+	EmbedBuilder,
+	ButtonStyle,
+	ButtonBuilder,
+	ActionRowBuilder,
+	channelMention,
+	ChannelSelectMenuBuilder,
+	ChannelType,
+	StringSelectMenuBuilder,
+	StringSelectMenuOptionBuilder,
+	roleMention,
+	RoleSelectMenuBuilder,
 } = require("discord.js");
 const CommunityRaffleSettings = require("../models/RaffleSettings");
 const CommunityRafflePrizes = require("../models/RafflePrizes");
 
 async function communityRaffleSettingsEmbed(interaction, raffleId) {
-    const settings = await CommunityRaffleSettings.findOne({ where: { id: raffleId } });
-    if (!settings) {
-        return;
-    }
-    const allPrizes = await CommunityRafflePrizes.findAll({ where: { raffle_id: raffleId } });
+	const settings = await CommunityRaffleSettings.findOne({ where: { id: raffleId } });
+	if (!settings) {
+		return;
+	}
+	const allPrizes = await CommunityRafflePrizes.findAll({ where: { raffle_id: raffleId } });
 
-    const logsChannelText = `__▸ Raffle Channel:__ ${settings.channel ? channelMention(settings.channel) : "❌ No channel set"}\n`;
-    const raffleRoleText = `__▸ Raffle Role:__ ${settings.raffle_role ? roleMention(settings.raffle_role) : "❌ No role set"}\n`;
+	const logsChannelText = `__▸ Raffle Channel:__ ${settings.channel ? channelMention(settings.channel) : "❌ No channel set"}\n`;
+	const raffleRoleText = `__▸ Raffle Role:__ ${settings.raffle_role ? roleMention(settings.raffle_role) : "❌ No role set"}\n`;
 
-    const spamChannelText = `__▸ Announcements Channel:__ ${
-        settings.spam_channel ? channelMention(settings.spam_channel) : "❌ No channel set"
-    }\n`;
-    const winnersAmountText = `__▸ Winners Amount:__ ${settings.winners_amount}\n`;
-    const priceText = `__▸ Tickets Price:__ ${settings.ticket_price_tokens + " RGL-Tokens" || "❌ Not set"}\n`;
-    const statusText = `__▸ Status:__ ${settings.status ? "*✅ Active*" : "*❌ Inactive*"}\n`;
-    const ticketsAmountText = `__▸ Tickets Amount:__ ${settings.tickets_amount || "❌ Not set"}\n`;
+	const spamChannelText = `__▸ Announcements Channel:__ ${
+		settings.spam_channel ? channelMention(settings.spam_channel) : "❌ No channel set"
+	}\n`;
+	const winnersAmountText = `__▸ Winners Amount:__ ${settings.winners_amount}\n`;
+	const priceText = `__▸ Tickets Price:__ ${settings.ticket_price_tokens + " RGL-Tokens" || "❌ Not set"}\n`;
+	const statusText = `__▸ Status:__ ${settings.status ? "*✅ Active*" : "*❌ Inactive*"}\n`;
+	const ticketsAmountText = `__▸ Tickets Amount:__ ${settings.tickets_amount || "❌ Not set"}\n`;
 
-    const messageText = `**__▸ Message:__\n**${settings.message?.length > 0 ? settings.message : "❌ Not set"}`;
+	const messageText = `**__▸ Message:__\n**${settings.message?.length > 0 ? settings.message : "❌ Not set"}`;
 
-    const embed = new EmbedBuilder()
-        .setTitle("🎟️ Community Raffle Settings")
-        .setColor("FFFFFF")
-        .setDescription(
-            `${raffleRoleText}${logsChannelText}${spamChannelText}${winnersAmountText}${ticketsAmountText}${priceText}${statusText}${messageText}`
-        );
+	const raffleIdText = `*(RAFFLE ID: ${settings.id})*`;
 
-    const statusBtn = new ButtonBuilder()
-        .setCustomId(`community_raffle_change_status-${raffleId}`)
-        .setLabel(settings.status ? "Turn OFF" : "Turn ON")
-        .setStyle(settings.status ? ButtonStyle.Danger : ButtonStyle.Success);
+	const embed = new EmbedBuilder()
+		.setTitle("🎟️ Community Raffle Settings")
+		.setColor("FFFFFF")
+		.setDescription(
+			`${raffleIdText}\n\n${raffleRoleText}${logsChannelText}${spamChannelText}${winnersAmountText}${ticketsAmountText}${priceText}${statusText}${messageText}`
+		);
 
-    const generalSettingsBtn = new ButtonBuilder()
-        .setCustomId(`community_raffle_general_settings-${raffleId}`)
-        .setLabel("⚙️ General Settings")
-        .setStyle(ButtonStyle.Secondary);
+	const statusBtn = new ButtonBuilder()
+		.setCustomId(`community_raffle_change_status-${raffleId}`)
+		.setLabel(settings.status ? "Turn OFF" : "Turn ON")
+		.setStyle(settings.status ? ButtonStyle.Danger : ButtonStyle.Success);
 
-    const editEmbedBtn = new ButtonBuilder()
-        .setCustomId(`community_raffle_edit_embed-${raffleId}`)
-        .setLabel("🖊️ Edit Embed")
-        .setStyle(ButtonStyle.Secondary);
+	const generalSettingsBtn = new ButtonBuilder()
+		.setCustomId(`community_raffle_general_settings-${raffleId}`)
+		.setLabel("⚙️ General Settings")
+		.setStyle(ButtonStyle.Secondary);
 
-    const channelSelectMenu = new ChannelSelectMenuBuilder()
-        .setCustomId(`community_raffle_change_channel-${raffleId}`)
-        .setPlaceholder("ℹ️ Change Raffle Channel")
-        .setChannelTypes(ChannelType.GuildText);
+	const editEmbedBtn = new ButtonBuilder()
+		.setCustomId(`community_raffle_edit_embed-${raffleId}`)
+		.setLabel("🖊️ Edit Embed")
+		.setStyle(ButtonStyle.Secondary);
 
-    const spamSelectMenu = new ChannelSelectMenuBuilder()
-        .setCustomId(`community_raffle_change_spam_channel-${raffleId}`)
-        .setPlaceholder("ℹ️ Change Announcements Channel")
-        .setChannelTypes(ChannelType.GuildText);
+	const channelSelectMenu = new ChannelSelectMenuBuilder()
+		.setCustomId(`community_raffle_change_channel-${raffleId}`)
+		.setPlaceholder("ℹ️ Change Raffle Channel")
+		.setChannelTypes(ChannelType.GuildText);
 
-    const roleSelectMenu = new RoleSelectMenuBuilder()
-        .setCustomId(`community_raffle_change_role-${raffleId}`)
-        .setPlaceholder("ℹ️ Change Raffle Role")
-        .setMinValues(1)
-        .setMaxValues(1);
+	const spamSelectMenu = new ChannelSelectMenuBuilder()
+		.setCustomId(`community_raffle_change_spam_channel-${raffleId}`)
+		.setPlaceholder("ℹ️ Change Announcements Channel")
+		.setChannelTypes(ChannelType.GuildText);
 
-    let prizeSelectRow = null;
-    if (settings.winners_amount && settings.winners_amount > 0) {
-        const options = [];
-        for (let i = 1; i <= settings.winners_amount; i++) {
-            const prizeObj = allPrizes.find((p) => p.place === i);
-            options.push(
-                new StringSelectMenuOptionBuilder()
-                    .setLabel(`${i}${i === 1 ? "st" : i === 2 ? "nd" : i === 3 ? "rd" : "th"} Place`)
-                    .setValue(`${i}`)
-                    .setDescription(prizeObj && prizeObj.prize ? prizeObj.prize : "No prize set")
-            );
-        }
-        const prizeSelectMenu = new StringSelectMenuBuilder()
-            .setCustomId(`community_raffle_prize_edit-${raffleId}`)
-            .setPlaceholder("🎁 Select Place to Change Prize")
-            .addOptions(options);
+	const roleSelectMenu = new RoleSelectMenuBuilder()
+		.setCustomId(`community_raffle_change_role-${raffleId}`)
+		.setPlaceholder("ℹ️ Change Raffle Role")
+		.setMinValues(1)
+		.setMaxValues(1);
 
-        prizeSelectRow = new ActionRowBuilder().addComponents(prizeSelectMenu);
-    }
+	let prizeSelectRow = null;
+	if (settings.winners_amount && settings.winners_amount > 0) {
+		const options = [];
+		for (let i = 1; i <= settings.winners_amount; i++) {
+			const prizeObj = allPrizes.find((p) => p.place === i);
+			options.push(
+				new StringSelectMenuOptionBuilder()
+					.setLabel(`${i}${i === 1 ? "st" : i === 2 ? "nd" : i === 3 ? "rd" : "th"} Place`)
+					.setValue(`${i}`)
+					.setDescription(prizeObj && prizeObj.prize ? prizeObj.prize : "No prize set")
+			);
+		}
+		const prizeSelectMenu = new StringSelectMenuBuilder()
+			.setCustomId(`community_raffle_prize_edit-${raffleId}`)
+			.setPlaceholder("🎁 Select Place to Change Prize")
+			.addOptions(options);
 
-    const row1 = new ActionRowBuilder().addComponents(statusBtn, generalSettingsBtn, editEmbedBtn);
-    const row2 = new ActionRowBuilder().addComponents(channelSelectMenu);
-    const row3 = new ActionRowBuilder().addComponents(spamSelectMenu);
-    const row4 = new ActionRowBuilder().addComponents(roleSelectMenu);
+		prizeSelectRow = new ActionRowBuilder().addComponents(prizeSelectMenu);
+	}
 
-    return { embeds: [embed], components: [row1, row2, row3, row4, prizeSelectRow] };
+	const row1 = new ActionRowBuilder().addComponents(statusBtn, generalSettingsBtn, editEmbedBtn);
+	const row2 = new ActionRowBuilder().addComponents(channelSelectMenu);
+	const row3 = new ActionRowBuilder().addComponents(spamSelectMenu);
+	const row4 = new ActionRowBuilder().addComponents(roleSelectMenu);
+
+	return { embeds: [embed], components: [row1, row2, row3, row4, prizeSelectRow] };
 }
 
 module.exports = communityRaffleSettingsEmbed;
