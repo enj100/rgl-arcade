@@ -323,6 +323,14 @@ module.exports = {
 				const liveFpSettings = await FpLiveSettings.findOne({ where: { id: 0 } });
 				liveFpSettings.profit = 0;
 				await liveFpSettings.save();
+			} else if (game === "whip") {
+				const settings = await HouseGamesProfit.findOne({ where: { id: 0 } });
+				settings.whip_duel = 0;
+				await settings.save();
+			} else if (game === "dice") {
+				const settings = await HouseGamesProfit.findOne({ where: { id: 0 } });
+				settings.dice_duel = 0;
+				await settings.save();
 			}
 			const { embeds, components } = await buildHouseGamesProfitEmbed();
 			await interaction.update({ embeds, components, ephemeral: true }); // Make the reply visible only to the user who invoked the command
