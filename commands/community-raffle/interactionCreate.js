@@ -402,7 +402,7 @@ module.exports = {
 				// delete all tickets
 
 				const embed = new EmbedBuilder()
-					.setDescription(`📢 **Community Raffle was canceled!**`)
+					.setDescription(`📢 **${settings.name || "Community Raffle"} was canceled!**`)
 					.setColor("ff0000")
 					.setFooter({ text: `❌ Canceled` });
 				await CommunityRaffleTickets.destroy({ where: { raffle_id: raffleId } });
@@ -436,14 +436,14 @@ module.exports = {
 				const raffleIdText = `(RAFFLE ID: ${settings.id})`;
 
 				const embed = new EmbedBuilder()
-					.setTitle(`🎊 Community Raffle 🎊`)
+					.setTitle(`🎊 ${settings.name || "Community Raffle"} 🎊`)
 					.setDescription(
 						`\n🎟️ **${settings.tickets_amount} TICKETS AVAILABLE! 🎟️**\n\n${settings.message || ""}\n### 🎁 Prizes:\n${prizes}\n${
 							settings.text || ""
 						}`
 					)
 					.setColor("ffffff")
-					.setFooter({ text: `🎉 Community Raffle! - ${raffleIdText}` });
+					.setFooter({ text: `🎉 ${settings.name || "Community Raffle"} - ${raffleIdText}` });
 
 				const buyWithRgl = new ButtonBuilder()
 					.setCustomId(`community_raffle_buy_ticket-${raffleId}`)
@@ -462,7 +462,7 @@ module.exports = {
 				});
 				if (spamChannel) {
 					const embed = new EmbedBuilder()
-						.setTitle(`🎟️ Community Raffle 🎟️`)
+						.setTitle(`🎟️ ${settings.name || "Community Raffle"} 🎟️`)
 						.setColor("FF0000")
 						.setDescription(`**▸ ${settings.name} has started! 🥳 Join now: ** ${channel}`)
 						.setFooter({ text: `🎉 New Raffle!` })
@@ -604,7 +604,7 @@ module.exports = {
 			});
 
 			await interaction.reply({
-				content: `*✅ You just bought ${amount} community raffle ticket(s)! - ${raffleIdText}*`,
+				content: `*✅ You just bought ${amount} ${settings.name || "Community Raffle"} ticket(s)! - ${raffleIdText}*`,
 				ephemeral: true,
 			});
 
@@ -659,12 +659,12 @@ module.exports = {
 					.setTitle(`🏆 Raffle Winners 🏆`)
 					.setImage("attachment://winners.gif")
 					.setColor("ffffff")
-					.setFooter({ text: `🎉 Community Raffle! - ${raffleIdText}` });
+					.setFooter({ text: `🎉 ${settings.name || "Community Raffle"} - ${raffleIdText}` });
 				const embedWinners = new EmbedBuilder()
 					.setTitle(`🏆 Raffle Winners 🏆`)
 					.setDescription(`${winnersText.length > 0 ? spoiler(winnersText) : "-"}`)
 					.setColor("ffffff")
-					.setFooter({ text: `🎉 Community Raffle! - ${raffleIdText}` });
+					.setFooter({ text: `🎉 ${settings.name || "Community Raffle"} - ${raffleIdText}` });
 				await channel.send({ embeds: [embed, embedWinners], files: [attachment] });
 
 				// set raffle to inactive and destroy all tickets
@@ -673,8 +673,8 @@ module.exports = {
 				await settings.save();
 
 				const spamEmbed = new EmbedBuilder()
-					.setTitle("🎟️ Community Raffle 🎟️")
-					.setDescription(`🎉 **${settings.name} has ended!** Check the winners: ${channel}`)
+					.setTitle(`🎟️ ${settings.name || "Community Raffle"} 🎟️`)
+					.setDescription(`🎉 **${settings.name || "Community Raffle"} has ended!** Check the winners: ${channel}`)
 					.setColor("FF0000")
 					.setFooter({ text: `🏆 Winners announced! - ${raffleIdText}` })
 					.setTimestamp();
