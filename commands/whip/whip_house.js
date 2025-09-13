@@ -8,6 +8,7 @@ const {
 	ContainerBuilder,
 	MessageFlags,
 	AttachmentBuilder,
+	spoiler,
 } = require("discord.js");
 const User = require("../wallet/models/User");
 const path = require("path");
@@ -64,6 +65,8 @@ module.exports = {
 			const winner = winnerSide === side ? userId : "RGL House Bot";
 			await updateWinnerStats(user, amount, winner === userId, parseFloat(process.env.HOUSE_WHIP_MULTIPLIER));
 
+			const winnerText = `▸ **Result: ** ${winnerSide === side ? `${spoiler("🟢 You Won!")}` : `${spoiler("🔴 You Lost!")}`}\n`;
+
 			// update profit
 			const [profit] = await HouseGamesProfit.findOrCreate({ where: { id: 0 } });
 			if (winner === userId) {
@@ -101,7 +104,7 @@ module.exports = {
 					section
 						.addTextDisplayComponents((textDisplay) =>
 							textDisplay.setContent(
-								`▸ **Bettor:** ${interaction.user}\n${bet}\n${multiplierText}\n▸ **Last Results:** ${
+								`▸ **Bettor:** ${interaction.user}\n${bet}\n${multiplierText}\n${winnerText}\n▸ **Last Results:** ${
 									displayStreak?.length > 0 ? displayStreak : "-"
 								}`
 							)

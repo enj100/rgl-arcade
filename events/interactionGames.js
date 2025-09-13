@@ -75,6 +75,8 @@ const { updateWinnerStats } = require("../utils/updateWinnersStats");
 const WhipHouseLastBets = require("../commands/whip/models/WhipHouseLastBets");
 const HouseGamesProfit = require("../commands/house_games_check/models/HouseGamesProfit");
 
+const tournamentInteraction = require("../commands/tournaments/interactionCreate");
+
 function shuffleArray(array) {
 	for (let i = array.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1)); // Random index from 0 to i
@@ -87,6 +89,14 @@ module.exports = {
 	name: Events.InteractionCreate,
 	async execute(interaction) {
 		if (interaction.isChatInputCommand()) return;
+		///////////////////////////////////////////////////
+		////////////////// Tournaments system /////////////
+		///////////////////////////////////////////////////
+		else if (interaction?.customId === "other_settings" && interaction?.values[0] === "tournaments_settings") {
+			return tournamentInteraction.execute(interaction);
+		} else if (interaction?.customId?.startsWith("tournaments_")) {
+			return tournamentInteraction.execute(interaction);
+		}
 		///////////////////////////////////////////////////
 		////////////////// Whip Duel [house] //////////////
 		///////////////////////////////////////////////////
@@ -142,6 +152,9 @@ module.exports = {
 			ctx.textAlign = "center";
 			ctx.textBaseline = "middle";
 			ctx.fillText(`${randomDice}`, 100, 100);
+			// add text if it's a win or loss
+			ctx.font = "bold 18px Arial";
+			ctx.fillText(winner === userId ? "You Win!" : "You Lose!", 100, 125);
 
 			const buffer = canvas.toBuffer("image/png");
 			const attachment = new AttachmentBuilder(buffer, { name: "dice_result.png" });
@@ -218,6 +231,7 @@ module.exports = {
 			}
 
 			const bet = `▸ **Bet:** ${amount.toFixed(2)} RGL-Tokens`;
+			const winnerText = `▸ **Result: ** ${winnerSide === side ? `${spoiler("🟢 You Won!")}` : `${spoiler("🔴 You Lost!")}`}\n`;
 
 			// 1. Randomly pick winner side
 			const sides = ["left", "right"];
@@ -261,7 +275,11 @@ module.exports = {
 				.addSectionComponents((section) =>
 					section
 						.addTextDisplayComponents((textDisplay) =>
-							textDisplay.setContent(`▸ **Bettor:** ${interaction.user}\n${bet}\n▸ **Last Results:** ${displayStreak}`)
+							textDisplay.setContent(
+								`▸ **Bettor:** ${interaction.user}\n${bet}\n${multiplierText}\n${winnerText}\n▸ **Last Results:** ${
+									displayStreak?.length > 0 ? displayStreak : "-"
+								}`
+							)
 						)
 						.setButtonAccessory((button) =>
 							button

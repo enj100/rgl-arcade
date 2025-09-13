@@ -93,6 +93,9 @@ module.exports = {
 			ctx.textAlign = "center";
 			ctx.textBaseline = "middle";
 			ctx.fillText(`${randomDice}`, 100, 100);
+			// add text if it's a win or loss
+			ctx.font = "bold 18px Arial";
+			ctx.fillText(winner === userId ? "You Win!" : "You Lose!", 100, 125);
 
 			const buffer = canvas.toBuffer("image/png");
 			const attachment = new AttachmentBuilder(buffer, { name: "dice_result.png" });

@@ -93,6 +93,7 @@ async function buildSettingsEmbed(interaction) {
 				new StringSelectMenuOptionBuilder().setLabel("👑 King of the Hill Settings").setValue("koth_settings"),
 				new StringSelectMenuOptionBuilder().setLabel("🧰 Chests Battle").setValue("chests_battle_settings"),
 				new StringSelectMenuOptionBuilder().setLabel("🔁 Swap Gold Settings").setValue("swap_gold_settings"),
+				new StringSelectMenuOptionBuilder().setLabel("🏆 Tournaments Settings").setValue("tournaments_settings"),
 			])
 	);
 
