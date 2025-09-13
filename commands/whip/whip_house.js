@@ -130,7 +130,7 @@ module.exports = {
 					actionRow.addComponents(
 						new ButtonBuilder()
 							.setCustomId(`whip_house_repeat-${userId}-${amount}-${side}`)
-							.setLabel("🔁 Play Again!")
+							.setLabel("🔁 Repeat Bet!")
 							.setStyle(ButtonStyle.Secondary)
 					)
 				);

@@ -123,7 +123,7 @@ module.exports = {
 					actionRow.addComponents(
 						new ButtonBuilder()
 							.setCustomId(`dice_house_repeat-${userId}-${amount}-${option}`)
-							.setLabel("🔁 Play Again!")
+							.setLabel("🔁 Repeat Bet!")
 							.setStyle(ButtonStyle.Secondary)
 					)
 				);

@@ -75,7 +75,7 @@ const { updateWinnerStats } = require("../utils/updateWinnersStats");
 const WhipHouseLastBets = require("../commands/whip/models/WhipHouseLastBets");
 const HouseGamesProfit = require("../commands/house_games_check/models/HouseGamesProfit");
 
-const tournamentInteraction = require("../commands/tournaments/interactionCreate");
+// const tournamentInteraction = require("../commands/tournaments/interactionCreate");
 
 function shuffleArray(array) {
 	for (let i = array.length - 1; i > 0; i--) {
@@ -92,11 +92,11 @@ module.exports = {
 		///////////////////////////////////////////////////
 		////////////////// Tournaments system /////////////
 		///////////////////////////////////////////////////
-		else if (interaction?.customId === "other_settings" && interaction?.values[0] === "tournaments_settings") {
-			return tournamentInteraction.execute(interaction);
-		} else if (interaction?.customId?.startsWith("tournaments_")) {
-			return tournamentInteraction.execute(interaction);
-		}
+		// else if (interaction?.customId === "other_settings" && interaction?.values[0] === "tournaments_settings") {
+		// 	return tournamentInteraction.execute(interaction);
+		// } else if (interaction?.customId?.startsWith("tournaments_")) {
+		// 	return tournamentInteraction.execute(interaction);
+		// }
 		///////////////////////////////////////////////////
 		////////////////// Whip Duel [house] //////////////
 		///////////////////////////////////////////////////
@@ -182,7 +182,7 @@ module.exports = {
 					actionRow.addComponents(
 						new ButtonBuilder()
 							.setCustomId(`dice_house_repeat-${userId}-${amount}-${option}`)
-							.setLabel("🔁 Play Again!")
+							.setLabel("🔁 Repeat Bet!")
 							.setStyle(ButtonStyle.Secondary)
 					)
 				);
@@ -302,7 +302,7 @@ module.exports = {
 					actionRow.addComponents(
 						new ButtonBuilder()
 							.setCustomId(`whip_house_repeat-${userId}-${amount}-${side}`)
-							.setLabel("🔁 Play Again!")
+							.setLabel("🔁 Repeat Bet!")
 							.setStyle(ButtonStyle.Secondary)
 					)
 				);
